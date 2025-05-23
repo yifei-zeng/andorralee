@@ -1,0 +1,15 @@
+-- 创建数据库（如果不存在）
+CREATE DATABASE IF NOT EXISTS andorralee;
+
+-- 使用数据库
+USE andorralee;
+
+-- 创建数据表（如果不存在）
+CREATE TABLE IF NOT EXISTS data_models (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    behavior VARCHAR(50),
+    data TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci; 
