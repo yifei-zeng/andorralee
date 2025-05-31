@@ -38,6 +38,73 @@ func SetupRouter() *gin.Engine {
 			docker.GET("/container/:id", handlers.GetContainerInfo)
 		}
 
+		// ------------------------------ 蜜罐管理接口 ------------------------------
+		honeypot := api.Group("/honeypot")
+		{
+			// 蜜罐模板管理
+			templates := honeypot.Group("/templates")
+			{
+				templates.GET("", handlers.GetAllTemplates)
+				templates.GET("/:id", handlers.GetTemplateByID)
+				templates.POST("", handlers.CreateTemplate)
+				templates.PUT("/:id", handlers.UpdateTemplate)
+				templates.DELETE("/:id", handlers.DeleteTemplate)
+				templates.POST("/import", handlers.ImportTemplate)
+				templates.POST("/:id/deploy", handlers.DeployTemplate)
+			}
+
+			// 蜜罐实例管理
+			instances := honeypot.Group("/instances")
+			{
+				instances.GET("", handlers.GetAllInstances)
+				instances.GET("/:id", handlers.GetInstanceByID)
+				instances.PUT("/:id", handlers.UpdateInstance)
+				instances.DELETE("/:id", handlers.DeleteInstance)
+				instances.POST("/:id/deploy", handlers.DeployInstance)
+				instances.POST("/:id/stop", handlers.StopInstance)
+				instances.GET("/:id/logs", handlers.GetInstanceLogs)
+			}
+
+			// 蜜罐日志管理
+			logs := honeypot.Group("/logs")
+			{
+				logs.GET("", handlers.GetAllHoneypotLogs)
+				logs.GET("/:id", handlers.GetHoneypotLogByID)
+				logs.GET("/instance/:id", handlers.GetLogsByInstanceID)
+			}
+		}
+
+		// ------------------------------ 诱饵(蜜签)管理接口 ------------------------------
+		baits := api.Group("/baits")
+		{
+			baits.GET("", handlers.GetAllBaits)
+			baits.GET("/:id", handlers.GetBaitByID)
+			baits.POST("", handlers.CreateBait)
+			baits.PUT("/:id", handlers.UpdateBait)
+			baits.DELETE("/:id", handlers.DeleteBait)
+			baits.POST("/:id/deploy", handlers.DeployBait)
+		}
+
+		// ------------------------------ 安全规则管理接口 ------------------------------
+		rules := api.Group("/rules")
+		{
+			rules.GET("", handlers.GetAllRules)
+			rules.GET("/:id", handlers.GetRuleByID)
+			rules.POST("", handlers.CreateRule)
+			rules.PUT("/:id", handlers.UpdateRule)
+			rules.DELETE("/:id", handlers.DeleteRule)
+			rules.PUT("/:id/enable", handlers.EnableRule)
+			rules.PUT("/:id/disable", handlers.DisableRule)
+
+			// 规则日志
+			ruleLogs := rules.Group("/logs")
+			{
+				ruleLogs.GET("", handlers.GetAllRuleLogs)
+				ruleLogs.GET("/:id", handlers.GetRuleLogByID)
+				ruleLogs.GET("/rule/:id", handlers.GetLogsByRuleID)
+			}
+		}
+
 		// ------------------------------ 数据库操作接口 ------------------------------
 		// 查询数据库字段（支持 MySQL 和达梦）
 		data := api.Group("/data")
@@ -54,7 +121,8 @@ func SetupRouter() *gin.Engine {
 		// 语义分割
 		ai := api.Group("/ai")
 		{
-			ai.POST("/semantic-segment", handlers.SemanticSegment)
+			ai.POST("/semantic-segment", handlers.SemanticSegment)   // 日志语义分割
+			ai.POST("/image-segment", handlers.ImageSemanticSegment) // 图像语义分割
 		}
 	}
 

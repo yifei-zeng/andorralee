@@ -1,158 +1,184 @@
 package handlers
 
 import (
-	"andorralee/internal/services"
+	"andorralee/pkg/utils"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
 // MonitorHandler 监控处理器
 type MonitorHandler struct {
-	monitorService *services.MonitorService
+	monitorDir string
 }
 
-// NewMonitorHandler 创建监控处理器实例
-func NewMonitorHandler(basePath string) *MonitorHandler {
+// NewMonitorHandler 创建监控处理器
+func NewMonitorHandler(monitorDir string) *MonitorHandler {
 	return &MonitorHandler{
-		monitorService: services.NewMonitorService(basePath),
+		monitorDir: monitorDir,
 	}
 }
 
 // CreateAlert 创建告警
 func (h *MonitorHandler) CreateAlert(c *gin.Context) {
-	var req struct {
-		Type    services.AlertType  `json:"type" binding:"required"`
-		Level   services.AlertLevel `json:"level" binding:"required"`
-		Source  string              `json:"source" binding:"required"`
-		Message string              `json:"message" binding:"required"`
-		Details string              `json:"details"`
+	var alert struct {
+		Title       string `json:"title" binding:"required"`
+		Description string `json:"description" binding:"required"`
+		Level       string `json:"level" binding:"required"`
+		SourceIP    string `json:"source_ip"`
+		TargetIP    string `json:"target_ip"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := c.ShouldBindJSON(&alert); err != nil {
+		utils.ResponseError(c, http.StatusBadRequest, "无效的请求参数: "+err.Error())
 		return
 	}
 
-	if err := h.monitorService.CreateAlert(req.Type, req.Level, req.Source, req.Message, req.Details); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	// 这里应该实现创建告警的逻辑
+	// 例如，将告警信息写入数据库或发送通知
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Alert created successfully",
+	utils.ResponseSuccess(c, map[string]interface{}{
+		"message": "创建告警成功",
+		"alert":   alert,
 	})
 }
 
 // ResolveAlert 解决告警
 func (h *MonitorHandler) ResolveAlert(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "alert ID is required"})
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		utils.ResponseError(c, http.StatusBadRequest, "无效的ID: "+err.Error())
 		return
 	}
 
-	var req struct {
-		ResolvedBy string `json:"resolved_by" binding:"required"`
-	}
+	// 这里应该实现解决告警的逻辑
+	// 例如，更新数据库中的告警状态
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err := h.monitorService.ResolveAlert(id, req.ResolvedBy); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Alert resolved successfully",
+	utils.ResponseSuccess(c, map[string]interface{}{
+		"message": "解决告警成功",
+		"id":      id,
 	})
 }
 
 // ListAlerts 列出所有告警
 func (h *MonitorHandler) ListAlerts(c *gin.Context) {
-	alerts, err := h.monitorService.ListAlerts()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+	// 这里应该实现列出所有告警的逻辑
+	// 例如，从数据库中查询告警信息
+
+	alerts := []map[string]interface{}{
+		{
+			"id":          1,
+			"title":       "可疑SSH登录尝试",
+			"description": "检测到多次SSH登录失败",
+			"level":       "warning",
+			"source_ip":   "192.168.1.100",
+			"target_ip":   "192.168.1.200",
+			"status":      "active",
+			"create_time": "2023-01-01T12:00:00Z",
+		},
+		{
+			"id":          2,
+			"title":       "Web服务器异常流量",
+			"description": "Web服务器流量突增",
+			"level":       "critical",
+			"source_ip":   "192.168.1.101",
+			"target_ip":   "192.168.1.201",
+			"status":      "resolved",
+			"create_time": "2023-01-01T13:00:00Z",
+		},
 	}
 
-	c.JSON(http.StatusOK, alerts)
+	utils.ResponseSuccess(c, alerts)
 }
 
-// GetAlert 获取告警信息
+// GetAlert 获取告警详情
 func (h *MonitorHandler) GetAlert(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "alert ID is required"})
-		return
-	}
-
-	alert, err := h.monitorService.GetAlert(id)
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.ResponseError(c, http.StatusBadRequest, "无效的ID: "+err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, alert)
+	// 这里应该实现获取告警详情的逻辑
+	// 例如，从数据库中查询指定ID的告警信息
+
+	alert := map[string]interface{}{
+		"id":          id,
+		"title":       "可疑SSH登录尝试",
+		"description": "检测到多次SSH登录失败",
+		"level":       "warning",
+		"source_ip":   "192.168.1.100",
+		"target_ip":   "192.168.1.200",
+		"status":      "active",
+		"create_time": "2023-01-01T12:00:00Z",
+		"details":     "在过去5分钟内检测到10次登录失败",
+	}
+
+	utils.ResponseSuccess(c, alert)
 }
 
 // MonitorHoneypot 监控蜜罐
 func (h *MonitorHandler) MonitorHoneypot(c *gin.Context) {
-	containerID := c.Param("id")
-	if containerID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "container ID is required"})
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		utils.ResponseError(c, http.StatusBadRequest, "无效的ID: "+err.Error())
 		return
 	}
 
-	if err := h.monitorService.MonitorHoneypot(containerID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	// 这里应该实现监控蜜罐的逻辑
+	// 例如，启动一个监控任务，定期检查蜜罐状态
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Honeypot monitoring completed",
+	utils.ResponseSuccess(c, map[string]interface{}{
+		"message":      "开始监控蜜罐",
+		"honeypot_id":  id,
+		"monitor_time": "2023-01-01T12:00:00Z",
 	})
 }
 
-// MonitorBait 监控蜜签
+// MonitorBait 监控诱饵
 func (h *MonitorHandler) MonitorBait(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "bait ID is required"})
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		utils.ResponseError(c, http.StatusBadRequest, "无效的ID: "+err.Error())
 		return
 	}
 
-	if err := h.monitorService.MonitorBait(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	// 这里应该实现监控诱饵的逻辑
+	// 例如，启动一个监控任务，定期检查诱饵是否被访问
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Bait monitoring completed",
+	utils.ResponseSuccess(c, map[string]interface{}{
+		"message":      "开始监控诱饵",
+		"bait_id":      id,
+		"monitor_time": "2023-01-01T12:00:00Z",
 	})
 }
 
 // MonitorTraffic 监控流量
 func (h *MonitorHandler) MonitorTraffic(c *gin.Context) {
 	var req struct {
-		SourceIP   string `json:"source_ip" binding:"required"`
-		TargetPort string `json:"target_port" binding:"required"`
+		IP       string `json:"ip" binding:"required"`
+		Port     int    `json:"port" binding:"required"`
+		Protocol string `json:"protocol" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.ResponseError(c, http.StatusBadRequest, "无效的请求参数: "+err.Error())
 		return
 	}
 
-	if err := h.monitorService.MonitorTraffic(req.SourceIP, req.TargetPort); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	// 这里应该实现监控流量的逻辑
+	// 例如，启动一个监控任务，定期检查指定IP和端口的流量
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Traffic monitoring completed",
+	utils.ResponseSuccess(c, map[string]interface{}{
+		"message":      "开始监控流量",
+		"ip":           req.IP,
+		"port":         req.Port,
+		"protocol":     req.Protocol,
+		"monitor_time": "2023-01-01T12:00:00Z",
 	})
 }

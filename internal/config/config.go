@@ -1,6 +1,7 @@
 package config
 
 import (
+	"andorralee/internal/repositories"
 	"context"
 	"fmt"
 	"os"
@@ -143,6 +144,31 @@ func InitDameng() error {
 	}
 
 	DamengDB = db
-	fmt.Println("达梦数据库连接成功")
+	// 不在这里打印连接成功消息，只在main.go中打印
+	return nil
+}
+
+// InitTables 初始化数据库表
+func InitTables() error {
+	if MySQLDB == nil {
+		return fmt.Errorf("MySQL数据库未初始化")
+	}
+
+	// 自动迁移数据库表结构
+	err := MySQLDB.AutoMigrate(
+		&repositories.HoneypotTemplate{},
+		&repositories.HoneypotInstance{},
+		&repositories.HoneypotLog{},
+		&repositories.Bait{},
+		&repositories.SecurityRule{},
+		&repositories.RuleLog{},
+	)
+
+	if err != nil {
+		fmt.Println("MySQL数据库表初始化失败: " + err.Error())
+		return err
+	}
+
+	fmt.Println("MySQL数据库表初始化成功")
 	return nil
 }

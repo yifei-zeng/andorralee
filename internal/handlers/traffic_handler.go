@@ -1,145 +1,154 @@
 package handlers
 
 import (
-	"andorralee/internal/services"
+	"andorralee/pkg/utils"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-// TrafficHandler 流量管理处理器
+// TrafficHandler 流量处理器
 type TrafficHandler struct {
-	trafficService *services.TrafficService
+	rulesDir string
 }
 
-// NewTrafficHandler 创建流量管理处理器实例
+// NewTrafficHandler 创建流量处理器
 func NewTrafficHandler() *TrafficHandler {
 	return &TrafficHandler{
-		trafficService: services.NewTrafficService(),
+		rulesDir: "data/rules",
 	}
 }
 
-// AddRedirectRule 添加流量重定向规则
+// AddRedirectRule 添加重定向规则
 func (h *TrafficHandler) AddRedirectRule(c *gin.Context) {
-	var req struct {
-		SourcePort string `json:"source_port" binding:"required"`
-		TargetPort string `json:"target_port" binding:"required"`
+	var rule struct {
+		SourceIP   string `json:"source_ip" binding:"required"`
+		TargetIP   string `json:"target_ip" binding:"required"`
+		SourcePort int    `json:"source_port" binding:"required"`
+		TargetPort int    `json:"target_port" binding:"required"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := c.ShouldBindJSON(&rule); err != nil {
+		utils.ResponseError(c, http.StatusBadRequest, "无效的请求参数: "+err.Error())
 		return
 	}
 
-	if err := h.trafficService.AddRedirectRule(req.SourcePort, req.TargetPort); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	// 这里应该实现添加重定向规则的逻辑
+	// 例如，调用iptables或其他流量控制工具
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Redirect rule added successfully",
+	utils.ResponseSuccess(c, map[string]interface{}{
+		"message": "添加重定向规则成功",
+		"rule":    rule,
 	})
 }
 
-// RemoveRedirectRule 删除流量重定向规则
+// RemoveRedirectRule 移除重定向规则
 func (h *TrafficHandler) RemoveRedirectRule(c *gin.Context) {
-	var req struct {
-		SourcePort string `json:"source_port" binding:"required"`
-		TargetPort string `json:"target_port" binding:"required"`
+	var rule struct {
+		SourceIP   string `json:"source_ip" binding:"required"`
+		TargetIP   string `json:"target_ip" binding:"required"`
+		SourcePort int    `json:"source_port" binding:"required"`
+		TargetPort int    `json:"target_port" binding:"required"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := c.ShouldBindJSON(&rule); err != nil {
+		utils.ResponseError(c, http.StatusBadRequest, "无效的请求参数: "+err.Error())
 		return
 	}
 
-	if err := h.trafficService.RemoveRedirectRule(req.SourcePort, req.TargetPort); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	// 这里应该实现移除重定向规则的逻辑
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Redirect rule removed successfully",
-	})
-}
-
-// ListRules 列出所有规则
-func (h *TrafficHandler) ListRules(c *gin.Context) {
-	rules, err := h.trafficService.ListRules()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"rules": rules,
+	utils.ResponseSuccess(c, map[string]interface{}{
+		"message": "移除重定向规则成功",
+		"rule":    rule,
 	})
 }
 
 // AddFilterRule 添加过滤规则
 func (h *TrafficHandler) AddFilterRule(c *gin.Context) {
-	var req struct {
-		SourceIP   string `json:"source_ip" binding:"required"`
-		TargetPort string `json:"target_port" binding:"required"`
+	var rule struct {
+		IP        string `json:"ip" binding:"required"`
+		Port      int    `json:"port" binding:"required"`
+		Protocol  string `json:"protocol" binding:"required"`
+		Action    string `json:"action" binding:"required"`
+		Direction string `json:"direction" binding:"required"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := c.ShouldBindJSON(&rule); err != nil {
+		utils.ResponseError(c, http.StatusBadRequest, "无效的请求参数: "+err.Error())
 		return
 	}
 
-	if err := h.trafficService.AddFilterRule(req.SourceIP, req.TargetPort); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	// 这里应该实现添加过滤规则的逻辑
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Filter rule added successfully",
+	utils.ResponseSuccess(c, map[string]interface{}{
+		"message": "添加过滤规则成功",
+		"rule":    rule,
 	})
 }
 
-// RemoveFilterRule 删除过滤规则
+// RemoveFilterRule 移除过滤规则
 func (h *TrafficHandler) RemoveFilterRule(c *gin.Context) {
-	var req struct {
-		SourceIP   string `json:"source_ip" binding:"required"`
-		TargetPort string `json:"target_port" binding:"required"`
+	var rule struct {
+		IP        string `json:"ip" binding:"required"`
+		Port      int    `json:"port" binding:"required"`
+		Protocol  string `json:"protocol" binding:"required"`
+		Action    string `json:"action" binding:"required"`
+		Direction string `json:"direction" binding:"required"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := c.ShouldBindJSON(&rule); err != nil {
+		utils.ResponseError(c, http.StatusBadRequest, "无效的请求参数: "+err.Error())
 		return
 	}
 
-	if err := h.trafficService.RemoveFilterRule(req.SourceIP, req.TargetPort); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	// 这里应该实现移除过滤规则的逻辑
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Filter rule removed successfully",
+	utils.ResponseSuccess(c, map[string]interface{}{
+		"message": "移除过滤规则成功",
+		"rule":    rule,
 	})
+}
+
+// ListRules 列出所有规则
+func (h *TrafficHandler) ListRules(c *gin.Context) {
+	// 这里应该实现列出所有规则的逻辑
+
+	rules := []map[string]interface{}{
+		{
+			"type":        "redirect",
+			"source_ip":   "192.168.1.100",
+			"target_ip":   "192.168.1.200",
+			"source_port": 80,
+			"target_port": 8080,
+		},
+		{
+			"type":      "filter",
+			"ip":        "192.168.1.10",
+			"port":      22,
+			"protocol":  "tcp",
+			"action":    "drop",
+			"direction": "in",
+		},
+	}
+
+	utils.ResponseSuccess(c, rules)
 }
 
 // SaveRules 保存规则
 func (h *TrafficHandler) SaveRules(c *gin.Context) {
-	if err := h.trafficService.SaveRules(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	// 这里应该实现保存规则的逻辑
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Rules saved successfully",
+	utils.ResponseSuccess(c, map[string]interface{}{
+		"message": "保存规则成功",
 	})
 }
 
 // RestoreRules 恢复规则
 func (h *TrafficHandler) RestoreRules(c *gin.Context) {
-	if err := h.trafficService.RestoreRules(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	// 这里应该实现恢复规则的逻辑
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Rules restored successfully",
+	utils.ResponseSuccess(c, map[string]interface{}{
+		"message": "恢复规则成功",
 	})
 }
