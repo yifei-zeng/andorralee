@@ -1,9 +1,51 @@
--- 先删除外键约束
-ALTER TABLE honeypot_instance DROP FOREIGN KEY honeypot_instance_ibfk_1;
-ALTER TABLE honeypot_log DROP FOREIGN KEY honeypot_log_ibfk_1;
-ALTER TABLE rule_log DROP FOREIGN KEY rule_log_ibfk_1;
-ALTER TABLE rule_log DROP FOREIGN KEY IF EXISTS rule_log_ibfk_2;
-ALTER TABLE bait DROP FOREIGN KEY bait_ibfk_1;
+-- 先检查并删除外键约束
+-- 检查honeypot_instance_ibfk_1是否存在
+SET @query1 = IF((SELECT COUNT(*) 
+                FROM information_schema.TABLE_CONSTRAINTS 
+                WHERE CONSTRAINT_SCHEMA = DATABASE() 
+                AND TABLE_NAME = 'honeypot_instance' 
+                AND CONSTRAINT_NAME = 'honeypot_instance_ibfk_1') > 0,
+               'ALTER TABLE honeypot_instance DROP FOREIGN KEY honeypot_instance_ibfk_1', 
+               'SELECT 1');
+PREPARE stmt1 FROM @query1;
+EXECUTE stmt1;
+DEALLOCATE PREPARE stmt1;
+
+-- 检查honeypot_log_ibfk_1是否存在
+SET @query2 = IF((SELECT COUNT(*) 
+                FROM information_schema.TABLE_CONSTRAINTS 
+                WHERE CONSTRAINT_SCHEMA = DATABASE() 
+                AND TABLE_NAME = 'honeypot_log' 
+                AND CONSTRAINT_NAME = 'honeypot_log_ibfk_1') > 0,
+               'ALTER TABLE honeypot_log DROP FOREIGN KEY honeypot_log_ibfk_1', 
+               'SELECT 1');
+PREPARE stmt2 FROM @query2;
+EXECUTE stmt2;
+DEALLOCATE PREPARE stmt2;
+
+-- 检查rule_log_ibfk_1是否存在
+SET @query3 = IF((SELECT COUNT(*) 
+                FROM information_schema.TABLE_CONSTRAINTS 
+                WHERE CONSTRAINT_SCHEMA = DATABASE() 
+                AND TABLE_NAME = 'rule_log' 
+                AND CONSTRAINT_NAME = 'rule_log_ibfk_1') > 0,
+               'ALTER TABLE rule_log DROP FOREIGN KEY rule_log_ibfk_1', 
+               'SELECT 1');
+PREPARE stmt3 FROM @query3;
+EXECUTE stmt3;
+DEALLOCATE PREPARE stmt3;
+
+-- 检查bait_ibfk_1是否存在
+SET @query5 = IF((SELECT COUNT(*) 
+                FROM information_schema.TABLE_CONSTRAINTS 
+                WHERE CONSTRAINT_SCHEMA = DATABASE() 
+                AND TABLE_NAME = 'bait' 
+                AND CONSTRAINT_NAME = 'bait_ibfk_1') > 0,
+               'ALTER TABLE bait DROP FOREIGN KEY bait_ibfk_1', 
+               'SELECT 1');
+PREPARE stmt5 FROM @query5;
+EXECUTE stmt5;
+DEALLOCATE PREPARE stmt5;
 
 -- 修改蜜罐模板表的ID字段
 ALTER TABLE honeypot_template MODIFY COLUMN id BIGINT UNSIGNED AUTO_INCREMENT;
@@ -22,7 +64,6 @@ ALTER TABLE security_rule MODIFY COLUMN id BIGINT UNSIGNED AUTO_INCREMENT;
 -- 修改规则日志表的ID和外键字段
 ALTER TABLE rule_log MODIFY COLUMN id BIGINT UNSIGNED AUTO_INCREMENT;
 ALTER TABLE rule_log MODIFY COLUMN rule_id BIGINT UNSIGNED NOT NULL;
-ALTER TABLE rule_log MODIFY COLUMN instance_id BIGINT UNSIGNED;
 
 -- 修改诱饵表的ID和外键字段
 ALTER TABLE bait MODIFY COLUMN id BIGINT UNSIGNED AUTO_INCREMENT;
@@ -40,10 +81,6 @@ ALTER TABLE honeypot_log
 ALTER TABLE rule_log 
     ADD CONSTRAINT rule_log_ibfk_1 
     FOREIGN KEY (rule_id) REFERENCES security_rule(id);
-
-ALTER TABLE rule_log 
-    ADD CONSTRAINT rule_log_ibfk_2 
-    FOREIGN KEY (instance_id) REFERENCES honeypot_instance(id);
 
 ALTER TABLE bait 
     ADD CONSTRAINT bait_ibfk_1 

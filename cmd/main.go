@@ -1,7 +1,8 @@
 package main
 
+// 暂时禁用swagger文档
+// _ "andorralee/docs"
 import (
-	_ "andorralee/docs"
 	"andorralee/internal/config"
 	"andorralee/routers" // 导入路由包
 	"fmt"
@@ -47,9 +48,6 @@ func main() {
 
 	// 初始化路由
 	r := routers.SetupRouter() // 通过路由包获取已配置的 Gin 引擎
-
-	// 注意：不再重复添加Swagger路由，因为已经在routers包中配置过了
-	// r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	fmt.Println("服务启动中，监听端口: 8080...")
 	// 启动服务

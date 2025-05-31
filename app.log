@@ -1,0 +1,62 @@
+Docker 客户端初始化成功
+MySQL 数据库连接成功
+MySQL数据库表初始化成功
+达梦数据库连接成功！
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] POST   /api/v1/docker/pull       --> andorralee/internal/handlers.PullImage (4 handlers)
+[GIN-debug] POST   /api/v1/docker/start      --> andorralee/internal/handlers.StartContainer (4 handlers)
+[GIN-debug] POST   /api/v1/docker/stop       --> andorralee/internal/handlers.StopContainer (4 handlers)
+[GIN-debug] GET    /api/v1/docker/images     --> andorralee/internal/handlers.ListImages (4 handlers)
+[GIN-debug] GET    /api/v1/docker/logs       --> andorralee/internal/handlers.GetContainerLogs (4 handlers)
+[GIN-debug] GET    /api/v1/docker/containers --> andorralee/internal/handlers.ListContainers (4 handlers)
+[GIN-debug] GET    /api/v1/docker/container/:id --> andorralee/internal/handlers.GetContainerInfo (4 handlers)
+[GIN-debug] GET    /api/v1/honeypot/templates --> andorralee/internal/handlers.GetAllTemplates (4 handlers)
+[GIN-debug] GET    /api/v1/honeypot/templates/:id --> andorralee/internal/handlers.GetTemplateByID (4 handlers)
+[GIN-debug] POST   /api/v1/honeypot/templates --> andorralee/internal/handlers.CreateTemplate (4 handlers)
+[GIN-debug] PUT    /api/v1/honeypot/templates/:id --> andorralee/internal/handlers.UpdateTemplate (4 handlers)
+[GIN-debug] DELETE /api/v1/honeypot/templates/:id --> andorralee/internal/handlers.DeleteTemplate (4 handlers)
+[GIN-debug] POST   /api/v1/honeypot/templates/import --> andorralee/internal/handlers.ImportTemplate (4 handlers)
+[GIN-debug] POST   /api/v1/honeypot/templates/:id/deploy --> andorralee/internal/handlers.DeployTemplate (4 handlers)
+[GIN-debug] GET    /api/v1/honeypot/instances --> andorralee/internal/handlers.GetAllInstances (4 handlers)
+[GIN-debug] GET    /api/v1/honeypot/instances/:id --> andorralee/internal/handlers.GetInstanceByID (4 handlers)
+[GIN-debug] PUT    /api/v1/honeypot/instances/:id --> andorralee/internal/handlers.UpdateInstance (4 handlers)
+[GIN-debug] DELETE /api/v1/honeypot/instances/:id --> andorralee/internal/handlers.DeleteInstance (4 handlers)
+[GIN-debug] POST   /api/v1/honeypot/instances/:id/deploy --> andorralee/internal/handlers.DeployInstance (4 handlers)
+[GIN-debug] POST   /api/v1/honeypot/instances/:id/stop --> andorralee/internal/handlers.StopInstance (4 handlers)
+[GIN-debug] GET    /api/v1/honeypot/instances/:id/logs --> andorralee/internal/handlers.GetInstanceLogs (4 handlers)
+[GIN-debug] GET    /api/v1/honeypot/logs     --> andorralee/internal/handlers.GetAllHoneypotLogs (4 handlers)
+[GIN-debug] GET    /api/v1/honeypot/logs/:id --> andorralee/internal/handlers.GetHoneypotLogByID (4 handlers)
+[GIN-debug] GET    /api/v1/honeypot/logs/instance/:id --> andorralee/internal/handlers.GetLogsByInstanceID (4 handlers)
+[GIN-debug] GET    /api/v1/baits             --> andorralee/internal/handlers.GetAllBaits (4 handlers)
+[GIN-debug] GET    /api/v1/baits/:id         --> andorralee/internal/handlers.GetBaitByID (4 handlers)
+[GIN-debug] POST   /api/v1/baits             --> andorralee/internal/handlers.CreateBait (4 handlers)
+[GIN-debug] PUT    /api/v1/baits/:id         --> andorralee/internal/handlers.UpdateBait (4 handlers)
+[GIN-debug] DELETE /api/v1/baits/:id         --> andorralee/internal/handlers.DeleteBait (4 handlers)
+[GIN-debug] POST   /api/v1/baits/:id/deploy  --> andorralee/internal/handlers.DeployBait (4 handlers)
+[GIN-debug] GET    /api/v1/rules             --> andorralee/internal/handlers.GetAllRules (4 handlers)
+[GIN-debug] GET    /api/v1/rules/:id         --> andorralee/internal/handlers.GetRuleByID (4 handlers)
+[GIN-debug] POST   /api/v1/rules             --> andorralee/internal/handlers.CreateRule (4 handlers)
+[GIN-debug] PUT    /api/v1/rules/:id         --> andorralee/internal/handlers.UpdateRule (4 handlers)
+[GIN-debug] DELETE /api/v1/rules/:id         --> andorralee/internal/handlers.DeleteRule (4 handlers)
+[GIN-debug] PUT    /api/v1/rules/:id/enable  --> andorralee/internal/handlers.EnableRule (4 handlers)
+[GIN-debug] PUT    /api/v1/rules/:id/disable --> andorralee/internal/handlers.DisableRule (4 handlers)
+[GIN-debug] GET    /api/v1/rules/logs        --> andorralee/internal/handlers.GetAllRuleLogs (4 handlers)
+[GIN-debug] GET    /api/v1/rules/logs/:id    --> andorralee/internal/handlers.GetRuleLogByID (4 handlers)
+[GIN-debug] GET    /api/v1/rules/logs/rule/:id --> andorralee/internal/handlers.GetLogsByRuleID (4 handlers)
+[GIN-debug] GET    /api/v1/data              --> andorralee/internal/handlers.QueryData (4 handlers)
+[GIN-debug] POST   /api/v1/data              --> andorralee/internal/handlers.CreateData (4 handlers)
+[GIN-debug] PUT    /api/v1/data              --> andorralee/internal/handlers.UpdateData (4 handlers)
+[GIN-debug] DELETE /api/v1/data              --> andorralee/internal/handlers.DeleteData (4 handlers)
+[GIN-debug] GET    /api/v1/data/id           --> andorralee/internal/handlers.GetDataByID (4 handlers)
+[GIN-debug] GET    /api/v1/data/name         --> andorralee/internal/handlers.GetDataByName (4 handlers)
+[GIN-debug] POST   /api/v1/ai/semantic-segment --> andorralee/internal/handlers.SemanticSegment (4 handlers)
+[GIN-debug] POST   /api/v1/ai/image-segment  --> andorralee/internal/handlers.ImageSemanticSegment (4 handlers)
+服务启动中，监听端口: 8081...
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://pkg.go.dev/github.com/gin-gonic/gin#readme-don-t-trust-all-proxies for details.
+[GIN-debug] Listening and serving HTTP on :8081

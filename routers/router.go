@@ -5,8 +5,9 @@ import (
 	"andorralee/pkg/middleware"    // 中间件包
 
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	// 暂时禁用 swagger 相关导入
+	// swaggerFiles "github.com/swaggo/files"
+	// ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // SetupRouter 初始化路由
@@ -19,8 +20,8 @@ func SetupRouter() *gin.Engine {
 	// - 跨域处理（允许前端访问）
 	r.Use(middleware.Cors())
 
-	// 静态文件服务
-	r.Static("/swagger", "./static/swagger")
+	// 删除静态文件路由，避免冲突
+	// r.Static("/swagger", "./static/swagger")
 
 	// 3. 定义 API 路由分组 `/api/v1`
 	api := r.Group("/api/v1")
@@ -126,10 +127,8 @@ func SetupRouter() *gin.Engine {
 		}
 	}
 
-	// 4. Swagger 文档路由
-	// 访问 http://localhost:8080/swagger/index.html 查看接口文档
-	// Swagger 文档路由 - 使用静态文件路径
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// 暂时禁用 Swagger 文档路由
+	// r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// 5. 返回路由引擎
 	return r

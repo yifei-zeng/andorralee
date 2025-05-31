@@ -8,8 +8,6 @@ require (
 	github.com/docker/docker v28.0.4+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/godoes/gorm-dameng v0.6.1
-	github.com/swaggo/files v1.0.1
-	github.com/swaggo/gin-swagger v1.6.0
 	gorm.io/driver/mysql v1.5.7
 	gorm.io/gorm v1.26.1
 )

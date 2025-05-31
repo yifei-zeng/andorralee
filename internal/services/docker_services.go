@@ -3,9 +3,15 @@ package services
 import (
 	"andorralee/internal/config"
 	"context"
-	"github.com/docker/docker/api/types/image"
 	"io"
+
+	"github.com/docker/docker/api/types/image"
 )
+
+// IsDockerAvailable 检查Docker客户端是否可用
+func IsDockerAvailable() bool {
+	return config.DockerCli != nil
+}
 
 // PullDockerImage 拉取 Docker 镜像
 func PullDockerImage(imageName string) error {
