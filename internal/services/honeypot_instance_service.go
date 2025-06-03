@@ -31,7 +31,7 @@ func NewHoneypotInstanceService() (*HoneypotInstanceService, error) {
 
 // GetAllInstances 获取所有蜜罐实例
 func (s *HoneypotInstanceService) GetAllInstances() ([]repositories.HoneypotInstance, error) {
-	return s.repo.GetAll()
+	return s.repo.List()
 }
 
 // GetInstanceByID 根据ID获取蜜罐实例

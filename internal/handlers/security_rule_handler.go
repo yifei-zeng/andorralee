@@ -24,7 +24,7 @@ func GetAllRules(c *gin.Context) {
 	}
 
 	repo := repositories.NewMySQLSecurityRuleRepo(config.MySQLDB)
-	rules, err := repo.GetAll()
+	rules, err := repo.List()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取规则失败: "+err.Error())
 		return

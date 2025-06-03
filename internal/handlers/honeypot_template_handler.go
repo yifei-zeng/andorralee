@@ -186,7 +186,7 @@ func ImportTemplate(c *gin.Context) {
 		return
 	}
 
-	if err := service.ImportTemplate(&template); err != nil {
+	if err := service.ImportTemplate(template.Name, template.Protocol); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "导入模板失败: "+err.Error())
 		return
 	}
@@ -224,10 +224,12 @@ func DeployTemplate(c *gin.Context) {
 		return
 	}
 
-	if err := service.DeployTemplate(uint(id), &instance); err != nil {
+	instanceID, err := service.DeployTemplate(uint(id), instance.Name, instance.IP, instance.Port)
+	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "部署模板失败: "+err.Error())
 		return
 	}
 
+	instance.ID = instanceID
 	utils.ResponseSuccess(c, instance)
 }

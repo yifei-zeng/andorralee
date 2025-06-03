@@ -59,4 +59,47 @@ CREATE TABLE IF NOT EXISTS rule_log (
     content TEXT COMMENT '执行内容',
     log_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '执行时间',
     FOREIGN KEY (rule_id) REFERENCES security_rule(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='规则执行日志'; 
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='规则执行日志';
+
+
+-- 创建Docker镜像表
+CREATE TABLE IF NOT EXISTS docker_image (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    image_id VARCHAR(64) NOT NULL COMMENT '镜像ID',
+    repository VARCHAR(100) COMMENT '仓库名称',
+    tag VARCHAR(50) COMMENT '标签',
+    digest VARCHAR(100) COMMENT '摘要',
+    size BIGINT COMMENT '镜像大小(字节)',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间',
+    UNIQUE KEY (image_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Docker镜像管理';
+
+-- 创建Docker镜像操作日志表
+CREATE TABLE IF NOT EXISTS docker_image_log (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    image_id VARCHAR(64) COMMENT '镜像ID',
+    image_name VARCHAR(200) COMMENT '镜像名称(包含仓库和标签)',
+    operation VARCHAR(20) NOT NULL COMMENT '操作类型(pull/delete/tag/inspect)',
+    details TEXT COMMENT '操作详情',
+    status VARCHAR(10) NOT NULL COMMENT '操作状态(success/failed)',
+    message TEXT COMMENT '状态消息',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Docker镜像操作日志';
+
+-- 创建容器日志分析表
+CREATE TABLE IF NOT EXISTS container_log_segment (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    container_id VARCHAR(64) NOT NULL COMMENT '容器ID',
+    container_name VARCHAR(100) COMMENT '容器名称',
+    segment_type VARCHAR(20) NOT NULL COMMENT '日志段类型(error/warning/info/debug)',
+    content TEXT NOT NULL COMMENT '日志内容',
+    timestamp DATETIME(3) COMMENT '日志时间戳',
+    line_number INT COMMENT '行号',
+    component VARCHAR(50) COMMENT '组件名称',
+    severity_level VARCHAR(10) COMMENT '严重程度',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '分析时间',
+    INDEX idx_container_id (container_id),
+    INDEX idx_segment_type (segment_type),
+    INDEX idx_timestamp (timestamp)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='容器日志语义分析结果';

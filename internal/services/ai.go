@@ -1,6 +1,7 @@
 package services
 
 import (
+	"andorralee/internal/config"
 	"andorralee/internal/repositories"
 	"fmt"
 	"regexp"
@@ -17,11 +18,12 @@ type LogSegmentResult struct {
 
 // LogSegmentInfo 日志片段信息
 type LogSegmentInfo struct {
-	Timestamp string `json:"timestamp"`
-	Level     string `json:"level"`
-	Component string `json:"component"`
-	Message   string `json:"message"`
-	Type      string `json:"type"`
+	Timestamp  string `json:"timestamp"`
+	Level      string `json:"level"`
+	Component  string `json:"component"`
+	Message    string `json:"message"`
+	Type       string `json:"type"`
+	LineNumber int    `json:"line_number"`
 }
 
 // SemanticSegment 对Docker容器日志进行语义分割
@@ -76,7 +78,7 @@ func AnalyzeContainerLogs(logContent string) ([]LogSegmentInfo, map[string]int) 
 	}
 
 	// 分析每行日志
-	for _, line := range logLines {
+	for lineNumber, line := range logLines {
 		if line == "" {
 			continue
 		}
@@ -88,18 +90,20 @@ func AnalyzeContainerLogs(logContent string) ([]LogSegmentInfo, map[string]int) 
 		if len(matches) >= 5 {
 			// 匹配成功，提取信息
 			segment = LogSegmentInfo{
-				Timestamp: matches[1],
-				Level:     matches[2],
-				Component: matches[3],
-				Message:   matches[4],
+				Timestamp:  matches[1],
+				Level:      matches[2],
+				Component:  matches[3],
+				Message:    matches[4],
+				LineNumber: lineNumber + 1, // 行号从1开始
 			}
 		} else {
 			// 无法匹配标准格式，作为原始消息处理
 			segment = LogSegmentInfo{
-				Timestamp: time.Now().Format(time.RFC3339),
-				Level:     "UNKNOWN",
-				Component: "system",
-				Message:   line,
+				Timestamp:  time.Now().Format(time.RFC3339),
+				Level:      "UNKNOWN",
+				Component:  "system",
+				Message:    line,
+				LineNumber: lineNumber + 1, // 行号从1开始
 			}
 		}
 
@@ -129,28 +133,65 @@ func AnalyzeContainerLogs(logContent string) ([]LogSegmentInfo, map[string]int) 
 
 // saveLogSegmentsToDatabase 将日志分析结果保存到数据库
 func saveLogSegmentsToDatabase(containerID string, segments []LogSegmentInfo) error {
-	// 创建数据库服务实例
-	dbService, err := NewDatabaseService("mysql")
-	if err != nil {
-		return fmt.Errorf("创建数据库服务失败: %v", err)
+	if config.MySQLDB == nil {
+		fmt.Printf("MySQL数据库未初始化，无法保存日志分析结果\n")
+		return nil
 	}
 
-	// 将每个日志片段保存为一条记录
+	// 创建仓库实例
+	segmentRepo := repositories.NewMySQLContainerLogSegmentRepo(config.MySQLDB)
+	containerRepo := repositories.NewMySQLDockerContainerRepo(config.MySQLDB)
+
+	// 获取容器信息
+	var containerName string
+	if container, err := containerRepo.GetByContainerID(containerID); err == nil {
+		containerName = container.ContainerName
+	}
+
+	// 转换为数据库模型
+	var dbSegments []repositories.ContainerLogSegment
 	for _, segment := range segments {
-		// 创建数据模型
-		data := &repositories.DataModel{
-			Name:      containerID,
-			Behavior:  segment.Type,
-			Data:      fmt.Sprintf("%s [%s] %s", segment.Timestamp, segment.Component, segment.Message),
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
+		dbSegment := repositories.ContainerLogSegment{
+			ContainerID:   containerID,
+			ContainerName: containerName,
+			SegmentType:   segment.Type,
+			Content:       segment.Message,
+			LineNumber:    segment.LineNumber,
+			Component:     segment.Component,
+			SeverityLevel: determineSeverityLevel(segment.Type),
 		}
 
-		// 保存到数据库
-		if err := dbService.CreateData(data); err != nil {
-			return fmt.Errorf("保存日志片段失败: %v", err)
+		// 解析时间戳
+		if segment.Timestamp != "" {
+			if timestamp, err := time.Parse(time.RFC3339Nano, segment.Timestamp); err == nil {
+				dbSegment.Timestamp = &timestamp
+			}
 		}
+
+		dbSegments = append(dbSegments, dbSegment)
 	}
 
+	// 批量保存到数据库
+	if err := segmentRepo.CreateBatch(dbSegments); err != nil {
+		return fmt.Errorf("保存日志分析结果到数据库失败: %v", err)
+	}
+
+	fmt.Printf("成功保存容器 %s 的 %d 个日志段到数据库\n", containerID, len(segments))
 	return nil
+}
+
+// determineSeverityLevel 根据日志类型确定严重程度
+func determineSeverityLevel(segmentType string) string {
+	switch strings.ToLower(segmentType) {
+	case "error":
+		return "high"
+	case "warning":
+		return "medium"
+	case "info":
+		return "low"
+	case "debug":
+		return "low"
+	default:
+		return "unknown"
+	}
 }

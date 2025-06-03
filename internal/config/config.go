@@ -162,6 +162,12 @@ func InitTables() error {
 		&repositories.Bait{},
 		&repositories.SecurityRule{},
 		&repositories.RuleLog{},
+		&repositories.DockerImage{},
+		&repositories.DockerImageLog{},
+		&repositories.ContainerLogSegment{},
+		&repositories.DockerContainer{},
+		&repositories.HeadlingAuthLog{},
+		&repositories.CowrieLog{},
 	)
 
 	if err != nil {

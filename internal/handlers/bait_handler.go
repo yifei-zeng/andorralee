@@ -76,7 +76,7 @@ func (h *BaitHandler) ListBaits(c *gin.Context) {
 	}
 
 	repo := repositories.NewMySQLBaitRepo(config.MySQLDB)
-	baits, err := repo.GetAll()
+	baits, err := repo.List()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取诱饵失败: "+err.Error())
 		return
@@ -152,7 +152,7 @@ func GetAllBaits(c *gin.Context) {
 	}
 
 	repo := repositories.NewMySQLBaitRepo(config.MySQLDB)
-	baits, err := repo.GetAll()
+	baits, err := repo.List()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取诱饵失败: "+err.Error())
 		return

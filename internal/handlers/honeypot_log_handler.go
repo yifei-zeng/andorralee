@@ -24,7 +24,7 @@ func GetAllHoneypotLogs(c *gin.Context) {
 	}
 
 	repo := repositories.NewMySQLHoneypotLogRepo(config.MySQLDB)
-	logs, err := repo.GetAll()
+	logs, err := repo.List()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取日志失败: "+err.Error())
 		return
