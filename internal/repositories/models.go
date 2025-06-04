@@ -15,26 +15,24 @@ type HoneypotTemplate struct {
 
 // HoneypotInstance 蜜罐实例模型
 type HoneypotInstance struct {
-	ID            uint             `json:"id" gorm:"primaryKey"`
-	Name          string           `json:"name" gorm:"size:50;not null;comment:实例名称"`
-	HoneypotName  string           `json:"honeypot_name" gorm:"size:100;not null;comment:蜜罐名称"`
-	ContainerName string           `json:"container_name" gorm:"size:50;not null;comment:容器名称"`
-	ContainerID   string           `json:"container_id" gorm:"size:64;comment:Docker容器ID"`
-	IP            string           `json:"ip" gorm:"size:45;not null;comment:IP地址"`
-	HoneypotIP    string           `json:"honeypot_ip" gorm:"size:45;comment:蜜罐IP地址"`
-	Port          int              `json:"port" gorm:"not null;comment:端口号"`
-	Protocol      string           `json:"protocol" gorm:"size:20;not null;comment:协议类型"`
-	InterfaceType string           `json:"interface_type" gorm:"size:50;comment:蜜罐接口类型"`
-	Status        string           `json:"status" gorm:"size:20;not null;default:created;comment:部署状态"`
-	ImageName     string           `json:"image_name" gorm:"size:200;comment:Docker镜像名称"`
-	ImageID       string           `json:"image_id" gorm:"size:64;comment:Docker镜像ID"`
-	PortMappings  string           `json:"port_mappings" gorm:"type:json;comment:端口映射配置"`
-	Environment   string           `json:"environment" gorm:"type:json;comment:环境变量配置"`
-	CreateTime    time.Time        `json:"create_time" gorm:"not null;comment:创建时间"`
-	UpdateTime    time.Time        `json:"update_time" gorm:"comment:更新时间"`
-	Description   string           `json:"description" gorm:"type:text;comment:描述"`
-	TemplateID    uint             `json:"template_id" gorm:"comment:关联模板ID"`
-	Template      HoneypotTemplate `json:"template" gorm:"foreignKey:TemplateID"`
+	ID            uint      `json:"id" gorm:"primaryKey"`
+	Name          string    `json:"name" gorm:"size:50;not null;comment:实例名称"`
+	HoneypotName  string    `json:"honeypot_name" gorm:"size:100;not null;comment:蜜罐名称"`
+	ContainerName string    `json:"container_name" gorm:"size:50;not null;comment:容器名称"`
+	ContainerID   string    `json:"container_id" gorm:"size:64;comment:Docker容器ID"`
+	IP            string    `json:"ip" gorm:"size:45;not null;comment:IP地址"`
+	HoneypotIP    string    `json:"honeypot_ip" gorm:"size:45;comment:蜜罐IP地址"`
+	Port          int       `json:"port" gorm:"not null;comment:端口号"`
+	Protocol      string    `json:"protocol" gorm:"size:20;not null;comment:协议类型"`
+	InterfaceType string    `json:"interface_type" gorm:"size:50;comment:蜜罐接口类型"`
+	Status        string    `json:"status" gorm:"size:20;not null;default:created;comment:部署状态"`
+	ImageName     string    `json:"image_name" gorm:"size:200;comment:Docker镜像名称"`
+	ImageID       string    `json:"image_id" gorm:"size:100;comment:Docker镜像ID"`
+	PortMappings  string    `json:"port_mappings" gorm:"type:json;comment:端口映射配置"`
+	Environment   string    `json:"environment" gorm:"type:json;comment:环境变量配置"`
+	CreateTime    time.Time `json:"create_time" gorm:"not null;comment:创建时间"`
+	UpdateTime    time.Time `json:"update_time" gorm:"comment:更新时间"`
+	Description   string    `json:"description" gorm:"type:text;comment:描述"`
 }
 
 // SecurityRule 安全规则模型
@@ -105,7 +103,7 @@ func (Bait) TableName() string {
 // DockerImage Docker镜像模型
 type DockerImage struct {
 	ID         uint      `json:"id" gorm:"primaryKey"`
-	ImageID    string    `json:"image_id" gorm:"size:64;not null;comment:镜像ID"`
+	ImageID    string    `json:"image_id" gorm:"size:100;not null;comment:镜像ID"`
 	Repository string    `json:"repository" gorm:"size:100;comment:仓库名称"`
 	Tag        string    `json:"tag" gorm:"size:50;comment:标签"`
 	Digest     string    `json:"digest" gorm:"size:100;comment:摘要"`
@@ -117,7 +115,7 @@ type DockerImage struct {
 // DockerImageLog Docker镜像操作日志模型
 type DockerImageLog struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
-	ImageID   string    `json:"image_id" gorm:"size:64;comment:镜像ID"`
+	ImageID   string    `json:"image_id" gorm:"size:100;comment:镜像ID"`
 	ImageName string    `json:"image_name" gorm:"size:200;comment:镜像名称(包含仓库和标签)"`
 	Operation string    `json:"operation" gorm:"size:20;not null;comment:操作类型(pull/delete/tag/inspect)"`
 	Details   string    `json:"details" gorm:"type:text;comment:操作详情"`
@@ -145,7 +143,7 @@ type DockerContainer struct {
 	ID            uint      `json:"id" gorm:"primaryKey"`
 	ContainerID   string    `json:"container_id" gorm:"size:64;not null;comment:Docker容器ID"`
 	ContainerName string    `json:"container_name" gorm:"size:100;not null;comment:容器名称"`
-	ImageID       string    `json:"image_id" gorm:"size:64;comment:关联的镜像ID"`
+	ImageID       string    `json:"image_id" gorm:"size:100;comment:关联的镜像ID"`
 	ImageName     string    `json:"image_name" gorm:"size:200;comment:镜像名称"`
 	Status        string    `json:"status" gorm:"size:20;comment:容器状态(running/stopped/exited等)"`
 	Ports         string    `json:"ports" gorm:"type:json;comment:端口映射信息"`

@@ -45,17 +45,7 @@ func SetupRouter() *gin.Engine {
 		// ------------------------------ 蜜罐管理接口 ------------------------------
 		honeypot := api.Group("/honeypot")
 		{
-			// 蜜罐模板管理
-			templates := honeypot.Group("/templates")
-			{
-				templates.GET("", handlers.GetAllTemplates)
-				templates.GET("/:id", handlers.GetTemplateByID)
-				templates.POST("", handlers.CreateTemplate)
-				templates.PUT("/:id", handlers.UpdateTemplate)
-				templates.DELETE("/:id", handlers.DeleteTemplate)
-				templates.POST("/import", handlers.ImportTemplate)
-				templates.POST("/:id/deploy", handlers.DeployTemplate)
-			}
+			// 蜜罐模板功能已移除，请使用容器实例管理功能
 
 			// 蜜罐实例管理
 			instances := honeypot.Group("/instances")
@@ -185,6 +175,9 @@ func SetupRouter() *gin.Engine {
 			containerInstances.GET("/:id", handlers.GetContainerInstanceByID)   // 根据ID获取容器实例
 			containerInstances.DELETE("/:id", handlers.DeleteContainerInstance) // 删除容器实例
 
+			// 镜像部署
+			containerInstances.POST("/deploy-image", handlers.DeployImageToContainer) // 将指定镜像部署到新容器实例
+
 			// 实例控制
 			containerInstances.POST("/:id/start", handlers.StartContainerInstance)     // 启动容器实例
 			containerInstances.POST("/:id/stop", handlers.StopContainerInstance)       // 停止容器实例
@@ -194,6 +187,16 @@ func SetupRouter() *gin.Engine {
 			containerInstances.GET("/:id/status", handlers.GetContainerInstanceStatus)        // 获取容器实例状态
 			containerInstances.GET("/status/:status", handlers.GetContainerInstancesByStatus) // 根据状态获取容器实例
 			containerInstances.POST("/sync-status", handlers.SyncAllContainerInstancesStatus) // 同步所有容器实例状态
+		}
+
+		// ------------------------------ 内存容器实例管理接口 ------------------------------
+		memoryContainerInstances := api.Group("/memory-container-instances")
+		{
+			// 内存实例管理
+			memoryContainerInstances.POST("", handlers.CreateMemoryContainerInstance)       // 创建内存容器实例
+			memoryContainerInstances.GET("", handlers.GetAllMemoryContainerInstances)       // 获取所有内存容器实例
+			memoryContainerInstances.GET("/:id", handlers.GetMemoryContainerInstanceByID)   // 根据ID获取内存容器实例
+			memoryContainerInstances.DELETE("/:id", handlers.DeleteMemoryContainerInstance) // 删除内存容器实例
 		}
 
 		// ------------------------------ 容器日志分析接口 ------------------------------

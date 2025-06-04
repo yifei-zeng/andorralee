@@ -21,47 +21,8 @@ func NewHoneypotHandler() *HoneypotHandler {
 
 // DeployHoneypot 部署蜜罐
 func (h *HoneypotHandler) DeployHoneypot(c *gin.Context) {
-	// 从请求体获取部署信息
-	var deployInfo struct {
-		TemplateID uint   `json:"template_id"`
-		Name       string `json:"name"`
-		IP         string `json:"ip"`
-		Port       int    `json:"port"`
-	}
-
-	if err := c.ShouldBindJSON(&deployInfo); err != nil {
-		utils.ResponseError(c, http.StatusBadRequest, "无效的请求参数: "+err.Error())
-		return
-	}
-
-	// 初始化服务
-	service, err := services.NewHoneypotTemplateService()
-	if err != nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "服务初始化失败: "+err.Error())
-		return
-	}
-
-	// 部署蜜罐
-	instanceID, err := service.DeployTemplate(deployInfo.TemplateID, deployInfo.Name, deployInfo.IP, deployInfo.Port)
-	if err != nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "部署蜜罐失败: "+err.Error())
-		return
-	}
-
-	// 获取蜜罐实例
-	instanceService, err := services.NewHoneypotInstanceService()
-	if err != nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "服务初始化失败: "+err.Error())
-		return
-	}
-
-	instance, err := instanceService.GetInstanceByID(instanceID)
-	if err != nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "获取蜜罐实例失败: "+err.Error())
-		return
-	}
-
-	utils.ResponseSuccess(c, instance)
+	// 蜜罐模板功能已移除，返回错误
+	utils.ResponseError(c, http.StatusNotImplemented, "蜜罐模板功能已移除，请使用容器实例管理功能")
 }
 
 // StopHoneypot 停止蜜罐

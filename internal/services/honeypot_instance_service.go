@@ -83,13 +83,7 @@ func (s *HoneypotInstanceService) DeleteInstance(id uint) error {
 		return err
 	}
 
-	// 减少模板部署数量
-	templateService, err := NewHoneypotTemplateService()
-	if err != nil {
-		return err
-	}
-
-	return templateService.repo.DecrementDeployCount(instance.TemplateID)
+	return nil
 }
 
 // DeployInstance 部署蜜罐实例（启动Docker容器）
@@ -100,16 +94,7 @@ func (s *HoneypotInstanceService) DeployInstance(id uint) error {
 		return err
 	}
 
-	// 获取模板信息
-	templateService, err := NewHoneypotTemplateService()
-	if err != nil {
-		return err
-	}
-
-	template, err := templateService.GetTemplateByID(instance.TemplateID)
-	if err != nil {
-		return err
-	}
+	// 直接使用实例的镜像名称
 
 	// 检查Docker客户端是否初始化
 	if config.DockerCli == nil {
@@ -134,7 +119,7 @@ func (s *HoneypotInstanceService) DeployInstance(id uint) error {
 
 	// 创建容器配置
 	containerConfig := &container.Config{
-		Image:        template.Name,
+		Image:        instance.ImageName,
 		ExposedPorts: exposedPorts,
 	}
 
