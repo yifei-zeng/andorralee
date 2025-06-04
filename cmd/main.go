@@ -4,6 +4,7 @@ package main
 // _ "andorralee/docs"
 import (
 	"andorralee/internal/config"
+	"andorralee/internal/handlers"
 	"andorralee/routers" // 导入路由包
 	"fmt"
 	"os"
@@ -49,9 +50,13 @@ func main() {
 	// 初始化路由
 	r := routers.SetupRouter() // 通过路由包获取已配置的 Gin 引擎
 
-	fmt.Println("服务启动中，监听端口: 8080...")
+	// 初始化默认蜜签
+	handlers.CreateDefaultHoneyTokens()
+	fmt.Println("✅ 默认蜜签初始化完成")
+
+	fmt.Println("服务启动中，监听端口: 8081...")
 	// 启动服务
-	err := r.Run(":8080")
+	err := r.Run(":8081")
 	if err != nil {
 		fmt.Println("服务启动失败:", err)
 		return

@@ -197,6 +197,57 @@ func SetupRouter() *gin.Engine {
 			memoryContainerInstances.GET("", handlers.GetAllMemoryContainerInstances)       // 获取所有内存容器实例
 			memoryContainerInstances.GET("/:id", handlers.GetMemoryContainerInstanceByID)   // 根据ID获取内存容器实例
 			memoryContainerInstances.DELETE("/:id", handlers.DeleteMemoryContainerInstance) // 删除内存容器实例
+
+			// 端口扫描
+			memoryContainerInstances.POST("/:id/scan", handlers.ScanContainerPorts) // 扫描容器端口
+		}
+
+		// ------------------------------ 蜜罐模板管理接口 ------------------------------
+		honeypotTemplates := api.Group("/honeypot-templates")
+		{
+			honeypotTemplates.GET("", handlers.GetHoneypotTemplates)                   // 获取所有蜜罐模板
+			honeypotTemplates.GET("/:id", handlers.GetHoneypotTemplateByID)            // 根据ID获取蜜罐模板
+			honeypotTemplates.POST("/:id/deploy", handlers.DeployHoneypotFromTemplate) // 从模板部署蜜罐
+			honeypotTemplates.GET("/protocols", handlers.GetSupportedProtocols)        // 获取支持的协议
+		}
+
+		// ------------------------------ 蜜签管理接口 ------------------------------
+		honeyTokens := api.Group("/honeytokens")
+		{
+			honeyTokens.POST("", handlers.CreateHoneyToken)                  // 创建蜜签
+			honeyTokens.GET("", handlers.GetAllHoneyTokens)                  // 获取所有蜜签
+			honeyTokens.GET("/:id", handlers.GetHoneyTokenByID)              // 根据ID获取蜜签
+			honeyTokens.PUT("/:id", handlers.UpdateHoneyToken)               // 更新蜜签
+			honeyTokens.DELETE("/:id", handlers.DeleteHoneyToken)            // 删除蜜签
+			honeyTokens.POST("/:id/trigger", handlers.TriggerHoneyToken)     // 触发蜜签
+			honeyTokens.GET("/triggers", handlers.GetHoneyTokenTriggers)     // 获取触发记录
+			honeyTokens.GET("/statistics", handlers.GetHoneyTokenStatistics) // 获取统计信息
+		}
+
+		// ------------------------------ 攻击捕获接口 ------------------------------
+		attackCapture := api.Group("/attack-capture")
+		{
+			attackCapture.POST("/events", handlers.CaptureAttackEvent)                // 捕获攻击事件
+			attackCapture.GET("/events", handlers.GetAllAttackEvents)                 // 获取所有攻击事件
+			attackCapture.GET("/events/ip/:ip", handlers.GetAttackEventsByIP)         // 根据IP获取攻击事件
+			attackCapture.GET("/sessions", handlers.GetAttackSessions)                // 获取攻击会话
+			attackCapture.GET("/sessions/:session_id", handlers.GetAttackSessionByID) // 根据会话ID获取攻击会话
+			attackCapture.GET("/statistics", handlers.GetAttackStatistics)            // 获取攻击统计
+			attackCapture.POST("/simulate", handlers.SimulateAttack)                  // 模拟攻击
+		}
+
+		// ------------------------------ 端口扫描接口 ------------------------------
+		portScan := api.Group("/port-scan")
+		{
+			portScan.POST("", handlers.ScanPorts)                 // 扫描端口
+			portScan.GET("/history", handlers.GetPortScanHistory) // 获取扫描历史
+		}
+
+		// ------------------------------ 日志导出接口 ------------------------------
+		logExport := api.Group("/logs")
+		{
+			logExport.POST("/export", handlers.ExportLogs)          // 导出日志
+			logExport.GET("/statistics", handlers.GetLogStatistics) // 获取日志统计
 		}
 
 		// ------------------------------ 容器日志分析接口 ------------------------------
