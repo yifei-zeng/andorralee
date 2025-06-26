@@ -1,0 +1,45 @@
+# Git相关
+.git
+.gitignore
+
+# 编译生成的文件
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# 日志文件
+*.log
+
+# 临时文件
+tmp/
+temp/
+
+# IDE相关文件
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 本地数据库文件
+dm_home/
+
+# Docker相关文件
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 文档和说明文件
+README.md
+DOCKER部署指南.md
+开发文档/
+docs/
+
+# 测试文件
+test/
+*_test.go
+
+# 其他不需要的文件
+.DS_Store
+Thumbs.db

@@ -15,22 +15,22 @@ import (
 
 // PortScanResult 端口扫描结果
 type PortScanResult struct {
-	IP       string      `json:"ip"`
-	Port     int         `json:"port"`
-	Protocol string      `json:"protocol"`
-	Status   string      `json:"status"` // open, closed, filtered
-	Service  string      `json:"service"`
-	Banner   string      `json:"banner"`
-	ScanTime time.Time   `json:"scan_time"`
-	Duration int64       `json:"duration_ms"`
+	IP       string    `json:"ip"`
+	Port     int       `json:"port"`
+	Protocol string    `json:"protocol"`
+	Status   string    `json:"status"` // open, closed, filtered
+	Service  string    `json:"service"`
+	Banner   string    `json:"banner"`
+	ScanTime time.Time `json:"scan_time"`
+	Duration int64     `json:"duration_ms"`
 }
 
 // PortScanRequest 端口扫描请求
 type PortScanRequest struct {
-	Target   string `json:"target" binding:"required"`   // IP地址或主机名
-	Ports    string `json:"ports"`                       // 端口范围，如 "22,80,443" 或 "1-1000"
-	Protocol string `json:"protocol"`                    // tcp, udp
-	Timeout  int    `json:"timeout"`                     // 超时时间（秒）
+	Target   string `json:"target" binding:"required"` // IP地址或主机名
+	Ports    string `json:"ports"`                     // 端口范围，如 "22,80,443" 或 "1-1000"
+	Protocol string `json:"protocol"`                  // tcp, udp
+	Timeout  int    `json:"timeout"`                   // 超时时间（秒）
 }
 
 // ScanPorts 扫描端口
@@ -83,32 +83,32 @@ func ScanPorts(c *gin.Context) {
 // parsePorts 解析端口字符串
 func parsePorts(portStr string) ([]int, error) {
 	var ports []int
-	
+
 	parts := strings.Split(portStr, ",")
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
-		
+
 		if strings.Contains(part, "-") {
 			// 端口范围
 			rangeParts := strings.Split(part, "-")
 			if len(rangeParts) != 2 {
 				return nil, fmt.Errorf("无效的端口范围: %s", part)
 			}
-			
+
 			start, err := strconv.Atoi(strings.TrimSpace(rangeParts[0]))
 			if err != nil {
 				return nil, fmt.Errorf("无效的起始端口: %s", rangeParts[0])
 			}
-			
+
 			end, err := strconv.Atoi(strings.TrimSpace(rangeParts[1]))
 			if err != nil {
 				return nil, fmt.Errorf("无效的结束端口: %s", rangeParts[1])
 			}
-			
+
 			if start > end || start < 1 || end > 65535 {
 				return nil, fmt.Errorf("无效的端口范围: %d-%d", start, end)
 			}
-			
+
 			for i := start; i <= end; i++ {
 				ports = append(ports, i)
 			}
@@ -118,15 +118,15 @@ func parsePorts(portStr string) ([]int, error) {
 			if err != nil {
 				return nil, fmt.Errorf("无效的端口: %s", part)
 			}
-			
+
 			if port < 1 || port > 65535 {
 				return nil, fmt.Errorf("端口超出范围: %d", port)
 			}
-			
+
 			ports = append(ports, port)
 		}
 	}
-	
+
 	return ports, nil
 }
 
@@ -135,25 +135,25 @@ func scanPortsConcurrent(target string, ports []int, protocol string, timeout in
 	var results []PortScanResult
 	var mutex sync.Mutex
 	var wg sync.WaitGroup
-	
+
 	// 限制并发数
 	semaphore := make(chan struct{}, 50)
-	
+
 	for _, port := range ports {
 		wg.Add(1)
 		go func(p int) {
 			defer wg.Done()
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
-			
+
 			result := scanSinglePort(target, p, protocol, timeout)
-			
+
 			mutex.Lock()
 			results = append(results, result)
 			mutex.Unlock()
 		}(port)
 	}
-	
+
 	wg.Wait()
 	return results
 }
@@ -161,7 +161,7 @@ func scanPortsConcurrent(target string, ports []int, protocol string, timeout in
 // scanSinglePort 扫描单个端口
 func scanSinglePort(target string, port int, protocol string, timeout int) PortScanResult {
 	startTime := time.Now()
-	
+
 	result := PortScanResult{
 		IP:       target,
 		Port:     port,
@@ -169,9 +169,10 @@ func scanSinglePort(target string, port int, protocol string, timeout int) PortS
 		Status:   "closed",
 		ScanTime: startTime,
 	}
-	
-	address := fmt.Sprintf("%s:%d", target, port)
-	
+
+	// 使用net.JoinHostPort确保IPv6兼容性
+	address := net.JoinHostPort(target, strconv.Itoa(port))
+
 	conn, err := net.DialTimeout(protocol, address, time.Duration(timeout)*time.Second)
 	if err != nil {
 		// 端口关闭或过滤
@@ -184,15 +185,15 @@ func scanSinglePort(target string, port int, protocol string, timeout int) PortS
 		// 端口开放
 		result.Status = "open"
 		result.Service = getServiceName(port)
-		
+
 		// 尝试获取banner
 		if banner := getBanner(conn, timeout); banner != "" {
 			result.Banner = banner
 		}
-		
+
 		conn.Close()
 	}
-	
+
 	result.Duration = time.Since(startTime).Milliseconds()
 	return result
 }
@@ -220,7 +221,7 @@ func getServiceName(port int) string {
 		8443:  "https-alt",
 		27017: "mongodb",
 	}
-	
+
 	if service, exists := services[port]; exists {
 		return service
 	}
@@ -230,19 +231,19 @@ func getServiceName(port int) string {
 // getBanner 获取服务banner
 func getBanner(conn net.Conn, timeout int) string {
 	conn.SetReadDeadline(time.Now().Add(time.Duration(timeout) * time.Second))
-	
+
 	buffer := make([]byte, 1024)
 	n, err := conn.Read(buffer)
 	if err != nil {
 		return ""
 	}
-	
+
 	banner := strings.TrimSpace(string(buffer[:n]))
 	// 限制banner长度
 	if len(banner) > 200 {
 		banner = banner[:200] + "..."
 	}
-	
+
 	return banner
 }
 

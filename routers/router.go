@@ -20,12 +20,20 @@ func SetupRouter() *gin.Engine {
 	// - 跨域处理（允许前端访问）
 	r.Use(middleware.Cors())
 
-	// 删除静态文件路由，避免冲突
-	// r.Static("/swagger", "./static/swagger")
+	// 添加静态文件路由
+	r.Static("/static", "./static")
+
+	// 添加简单健康检查端点（用于Docker健康检查）
+	r.GET("/health", handlers.SimpleHealthCheck)
 
 	// 3. 定义 API 路由分组 `/api/v1`
 	api := r.Group("/api/v1")
 	{
+		// ------------------------------ 健康检查接口 ------------------------------
+		api.GET("/health", handlers.HealthCheck)
+		api.GET("/ready", handlers.ReadinessCheck)
+		api.GET("/live", handlers.LivenessCheck)
+
 		// ------------------------------ Docker 操作接口 ------------------------------
 		// 拉取镜像
 		docker := api.Group("/docker")
@@ -187,6 +195,8 @@ func SetupRouter() *gin.Engine {
 			containerInstances.GET("/:id/status", handlers.GetContainerInstanceStatus)        // 获取容器实例状态
 			containerInstances.GET("/status/:status", handlers.GetContainerInstancesByStatus) // 根据状态获取容器实例
 			containerInstances.POST("/sync-status", handlers.SyncAllContainerInstancesStatus) // 同步所有容器实例状态
+			containerInstances.POST("/sync", handlers.SyncContainerStatus)                    // 同步容器状态（新版本）
+			containerInstances.GET("/:id/debug", handlers.GetContainerDebugInfo)              // 获取容器调试信息
 		}
 
 		// ------------------------------ 内存容器实例管理接口 ------------------------------

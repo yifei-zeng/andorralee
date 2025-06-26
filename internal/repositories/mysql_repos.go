@@ -78,14 +78,14 @@ func NewMySQLHoneypotInstanceRepo(db *gorm.DB) HoneypotInstanceRepository {
 // List 获取所有蜜罐实例
 func (r *MySQLHoneypotInstanceRepo) List() ([]HoneypotInstance, error) {
 	var instances []HoneypotInstance
-	result := r.DB.Preload("Template").Find(&instances)
+	result := r.DB.Find(&instances)
 	return instances, result.Error
 }
 
 // GetByID 根据ID获取蜜罐实例
 func (r *MySQLHoneypotInstanceRepo) GetByID(id uint) (*HoneypotInstance, error) {
 	var instance HoneypotInstance
-	result := r.DB.Preload("Template").First(&instance, id)
+	result := r.DB.First(&instance, id)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -125,14 +125,14 @@ func (r *MySQLHoneypotInstanceRepo) UpdateStatus(id uint, status string) error {
 // GetByStatus 根据状态获取蜜罐实例
 func (r *MySQLHoneypotInstanceRepo) GetByStatus(status string) ([]HoneypotInstance, error) {
 	var instances []HoneypotInstance
-	result := r.DB.Where("status = ?", status).Preload("Template").Find(&instances)
+	result := r.DB.Where("status = ?", status).Find(&instances)
 	return instances, result.Error
 }
 
 // GetByContainerID 根据容器ID获取蜜罐实例
 func (r *MySQLHoneypotInstanceRepo) GetByContainerID(containerID string) (*HoneypotInstance, error) {
 	var instance HoneypotInstance
-	result := r.DB.Where("container_id = ?", containerID).Preload("Template").First(&instance)
+	result := r.DB.Where("container_id = ?", containerID).First(&instance)
 	if result.Error != nil {
 		return nil, result.Error
 	}

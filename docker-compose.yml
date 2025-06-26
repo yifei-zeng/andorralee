@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # 应用服务
+  andorralee:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: andorralee
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./dm_home:/app/dm_home
+    depends_on:
+      - mysql
+      - dameng
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=123456
+      - MYSQL_DATABASE=andorralee
+      - DAMENG_HOST=dameng
+      - DAMENG_PORT=5236
+      - DAMENG_USER=SYSDBA
+      - DAMENG_PASSWORD=Dm123456
+      - DAMENG_DATABASE=DOCKER_OPS
+    restart: unless-stopped
+    # 使用host网络模式，以便能够访问宿主机的Docker守护进程
+    # 注意：这在Windows和macOS上可能不起作用，因为Docker在这些平台上运行在虚拟机中
+    # 在这种情况下，需要将宿主机的Docker套接字挂载到容器中
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # MySQL数据库服务
+  mysql:
+    image: mysql:8.0
+    container_name: andorralee-mysql
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./scripts/create_tables.sql:/docker-entrypoint-initdb.d/create_tables.sql
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_DATABASE=andorralee
+    restart: unless-stopped
+
+  # 达梦数据库服务
+  dameng:
+    image: dm8_single:v8.1.2.128_ent_x86_64_redhat7_20200927
+    container_name: andorralee-dameng
+    ports:
+      - "5236:5236"
+    volumes:
+      - dameng_data:/opt/dmdbms/data
+    environment:
+      - DM_INIT_DB=DOCKER_OPS
+      - DM_USER=SYSDBA
+      - DM_PWD=Dm123456
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  dameng_data:

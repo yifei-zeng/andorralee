@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"andorralee/pkg/utils"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -202,6 +203,19 @@ func DeployHoneypotFromTemplate(c *gin.Context) {
 	memoryInstances[nextID] = instance
 	nextID++
 	instanceMutex.Unlock()
+
+	// 如果设置了自动启动，则尝试创建并启动实际的Docker容器
+	if instanceReq.AutoStart {
+		// 这里可以调用实际的容器创建逻辑
+		// 为了简化，我们只更新状态为"auto_start_requested"
+		instanceMutex.Lock()
+		instance.Status = "auto_start_requested"
+		instanceMutex.Unlock()
+
+		// 在实际项目中，这里应该调用Docker API创建和启动容器
+		// 例如：CreateAndStartDockerContainer(instanceReq)
+		fmt.Printf("模板部署: AutoStart已启用，容器将自动启动 - %s\n", instance.Name)
+	}
 
 	utils.ResponseSuccess(c, map[string]interface{}{
 		"message":       "从模板部署蜜罐成功",

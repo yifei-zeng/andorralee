@@ -1,0 +1,260 @@
+# 银河麒麟系统专用Docker Compose配置
+# 针对银河麒麟V10系统优化的容器编排文件
+# 支持x86_64和ARM64架构
+
+version: '3.8'
+
+services:
+  # 主应用服务
+  andorralee:
+    build:
+      context: .
+      dockerfile: Dockerfile.kylin
+      args:
+        BUILDPLATFORM: linux/amd64
+        TARGETPLATFORM: linux/amd64
+    image: andorralee:kylin-latest
+    container_name: andorralee-kylin
+    hostname: andorralee-server
+    restart: unless-stopped
+    
+    # 网络配置
+    ports:
+      - "8081:8081"
+    
+    # 卷挂载
+    volumes:
+      # Docker套接字挂载 - 银河麒麟系统路径
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      # 数据持久化
+      - ./data:/app/data:rw
+      - ./logs:/var/log/andorralee:rw
+      - ./dm_home:/app/dm_home:rw
+      # 配置文件
+      - ./config:/app/config:ro
+    
+    # 环境变量
+    environment:
+      # 数据库配置
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=Kylin123456!
+      - MYSQL_DATABASE=andorralee
+      
+      # 达梦数据库配置
+      - DAMENG_HOST=dameng
+      - DAMENG_PORT=5236
+      - DAMENG_USER=SYSDBA
+      - DAMENG_PASSWORD=Kylin123456!
+      - DAMENG_DATABASE=DOCKER_OPS
+      
+      # 应用配置
+      - DM_HOME=/app/dm_home
+      - GIN_MODE=release
+      - LOG_LEVEL=info
+      - LOG_PATH=/var/log/andorralee
+      
+      # 银河麒麟系统特定配置
+      - KYLIN_COMPATIBLE=true
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DOCKER_API_VERSION=1.41
+    
+    # 依赖服务
+    depends_on:
+      mysql:
+        condition: service_healthy
+      dameng:
+        condition: service_started
+    
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # 安全配置
+    security_opt:
+      - no-new-privileges:true
+    
+    # 网络模式 - 银河麒麟系统兼容
+    networks:
+      - andorralee-network
+
+  # MySQL数据库服务 - 银河麒麟兼容版本
+  mysql:
+    image: mysql:8.0
+    container_name: andorralee-mysql-kylin
+    hostname: mysql-server
+    restart: unless-stopped
+    
+    # 端口配置
+    ports:
+      - "3306:3306"
+    
+    # 卷挂载
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./scripts/create_tables.sql:/docker-entrypoint-initdb.d/01-create_tables.sql:ro
+      - ./scripts/kylin_mysql_init.sql:/docker-entrypoint-initdb.d/02-kylin_init.sql:ro
+      - ./mysql/conf.d:/etc/mysql/conf.d:ro
+    
+    # 环境变量
+    environment:
+      - MYSQL_ROOT_PASSWORD=Kylin123456!
+      - MYSQL_DATABASE=andorralee
+      - MYSQL_USER=andorralee
+      - MYSQL_PASSWORD=Kylin123456!
+      - MYSQL_CHARSET=utf8mb4
+      - MYSQL_COLLATION=utf8mb4_unicode_ci
+    
+    # MySQL配置 - 银河麒麟系统优化
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_connections=1000
+      --innodb_buffer_pool_size=512M
+      --innodb_log_file_size=128M
+      --innodb_flush_log_at_trx_commit=2
+      --sync_binlog=0
+      --sql_mode=STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO
+    
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pKylin123456!"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    
+    networks:
+      - andorralee-network
+
+  # 达梦数据库服务 - 银河麒麟兼容
+  dameng:
+    image: dm8_single:v8.1.2.128_ent_x86_64_kylin_20210901
+    container_name: andorralee-dameng-kylin
+    hostname: dameng-server
+    restart: unless-stopped
+    
+    # 端口配置
+    ports:
+      - "5236:5236"
+    
+    # 卷挂载
+    volumes:
+      - dameng_data:/opt/dmdbms/data
+      - ./dameng/scripts:/opt/dmdbms/scripts:ro
+    
+    # 环境变量
+    environment:
+      - DM_INIT_DB=DOCKER_OPS
+      - DM_USER=SYSDBA
+      - DM_PWD=Kylin123456!
+      - INSTANCE_NAME=DMSERVER
+      - PAGE_SIZE=16
+      - EXTENT_SIZE=32
+      - CASE_SENSITIVE=Y
+      - CHARSET=1
+    
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    
+    networks:
+      - andorralee-network
+
+  # Redis缓存服务 - 可选
+  redis:
+    image: redis:7-alpine
+    container_name: andorralee-redis-kylin
+    hostname: redis-server
+    restart: unless-stopped
+    
+    ports:
+      - "6379:6379"
+    
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    
+    command: redis-server /usr/local/etc/redis/redis.conf
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    
+    networks:
+      - andorralee-network
+
+# 网络配置
+networks:
+  andorralee-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+
+# 数据卷配置
+volumes:
+  mysql_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/mysql
+  
+  dameng_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/dameng
+  
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/redis

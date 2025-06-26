@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -196,11 +197,16 @@ func CreateContainerInstance(c *gin.Context) {
 		imageID = fmt.Sprintf("mock-%s", uuid.New().String()[:8])
 	}
 
+	// 确保容器ID被正确设置
+	if dockerAvailable && containerID == "" {
+		fmt.Printf("警告: Docker容器创建成功但容器ID为空\n")
+	}
+
 	instance := &repositories.HoneypotInstance{
 		Name:          req.Name,
 		HoneypotName:  req.HoneypotName,
 		ContainerName: containerName,
-		ContainerID:   containerID,
+		ContainerID:   containerID, // 确保容器ID被正确保存
 		IP:            "0.0.0.0",
 		HoneypotIP:    containerIP,
 		Port:          mainPort,
@@ -215,6 +221,9 @@ func CreateContainerInstance(c *gin.Context) {
 		UpdateTime:    time.Now(),
 		Description:   req.Description,
 	}
+
+	// 调试日志
+	fmt.Printf("创建容器实例 - 容器ID: %s, 状态: %s, Docker可用: %v\n", containerID, containerStatus, dockerAvailable)
 
 	if err := service.CreateInstance(instance); err != nil {
 		if dockerAvailable && containerID != "" {
@@ -264,7 +273,179 @@ func GetAllContainerInstances(c *gin.Context) {
 		return
 	}
 
+	// 同步Docker容器状态
+	if config.DockerCli != nil {
+		for i, instance := range instances {
+			if instance.ContainerID != "" {
+				containerInfo, err := config.DockerCli.ContainerInspect(context.Background(), instance.ContainerID)
+				if err != nil {
+					fmt.Printf("获取容器 %s 状态失败: %v\n", instance.ContainerID, err)
+					// 如果容器不存在，标记为已删除
+					instances[i].Status = "deleted"
+				} else {
+					// 更新实际状态
+					dockerStatus := containerInfo.State.Status
+					if dockerStatus != instance.Status {
+						fmt.Printf("同步容器状态: %s -> %s\n", instance.Status, dockerStatus)
+						instances[i].Status = dockerStatus
+						// 异步更新数据库状态
+						go func(id uint, status string) {
+							service.UpdateInstanceStatus(id, status)
+						}(instance.ID, dockerStatus)
+					}
+				}
+			}
+		}
+	}
+
+	fmt.Printf("返回 %d 个容器实例\n", len(instances))
 	utils.ResponseSuccess(c, instances)
+}
+
+// SyncContainerStatus 同步所有容器状态
+func SyncContainerStatus(c *gin.Context) {
+	service, err := services.NewHoneypotInstanceService()
+	if err != nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
+		return
+	}
+
+	if config.DockerCli == nil {
+		utils.ResponseError(c, http.StatusServiceUnavailable, "Docker服务不可用")
+		return
+	}
+
+	instances, err := service.GetAllInstances()
+	if err != nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "获取容器实例失败: "+err.Error())
+		return
+	}
+
+	syncResults := make([]map[string]interface{}, 0)
+
+	for _, instance := range instances {
+		result := map[string]interface{}{
+			"id":           instance.ID,
+			"name":         instance.Name,
+			"container_id": instance.ContainerID,
+			"old_status":   instance.Status,
+		}
+
+		if instance.ContainerID != "" {
+			containerInfo, err := config.DockerCli.ContainerInspect(context.Background(), instance.ContainerID)
+			if err != nil {
+				result["new_status"] = "deleted"
+				result["error"] = err.Error()
+				// 更新数据库状态
+				service.UpdateInstanceStatus(instance.ID, "deleted")
+			} else {
+				dockerStatus := containerInfo.State.Status
+				result["new_status"] = dockerStatus
+
+				if dockerStatus != instance.Status {
+					// 更新数据库状态
+					if err := service.UpdateInstanceStatus(instance.ID, dockerStatus); err != nil {
+						result["update_error"] = err.Error()
+					} else {
+						result["updated"] = true
+					}
+				} else {
+					result["updated"] = false
+				}
+			}
+		} else {
+			result["new_status"] = "no_container_id"
+			result["error"] = "容器ID为空"
+		}
+
+		syncResults = append(syncResults, result)
+	}
+
+	utils.ResponseSuccess(c, map[string]interface{}{
+		"message": "容器状态同步完成",
+		"results": syncResults,
+	})
+}
+
+// GetContainerDebugInfo 获取容器调试信息
+func GetContainerDebugInfo(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		utils.ResponseError(c, http.StatusBadRequest, "无效的ID: "+err.Error())
+		return
+	}
+
+	service, err := services.NewHoneypotInstanceService()
+	if err != nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
+		return
+	}
+
+	instance, err := service.GetInstanceByID(uint(id))
+	if err != nil {
+		utils.ResponseError(c, http.StatusNotFound, "容器实例不存在: "+err.Error())
+		return
+	}
+
+	debugInfo := map[string]interface{}{
+		"database_info": map[string]interface{}{
+			"id":           instance.ID,
+			"name":         instance.Name,
+			"container_id": instance.ContainerID,
+			"status":       instance.Status,
+			"image_name":   instance.ImageName,
+			"create_time":  instance.CreateTime,
+			"update_time":  instance.UpdateTime,
+		},
+		"docker_available": config.DockerCli != nil,
+	}
+
+	// 如果Docker可用且有容器ID，获取Docker信息
+	if config.DockerCli != nil && instance.ContainerID != "" {
+		containerInfo, err := config.DockerCli.ContainerInspect(context.Background(), instance.ContainerID)
+		if err != nil {
+			debugInfo["docker_error"] = err.Error()
+			debugInfo["docker_status"] = "error"
+		} else {
+			debugInfo["docker_info"] = map[string]interface{}{
+				"id":      containerInfo.ID,
+				"name":    containerInfo.Name,
+				"status":  containerInfo.State.Status,
+				"running": containerInfo.State.Running,
+				"image":   containerInfo.Config.Image,
+				"created": containerInfo.Created,
+			}
+			debugInfo["docker_status"] = "found"
+		}
+
+		// 列出所有容器，查看是否有匹配的
+		containers, err := config.DockerCli.ContainerList(context.Background(), container.ListOptions{All: true})
+		if err != nil {
+			debugInfo["list_error"] = err.Error()
+		} else {
+			matchingContainers := make([]map[string]interface{}, 0)
+			for _, cont := range containers {
+				if cont.ID == instance.ContainerID || strings.Contains(cont.Names[0], instance.ContainerName) {
+					matchingContainers = append(matchingContainers, map[string]interface{}{
+						"id":     cont.ID,
+						"names":  cont.Names,
+						"image":  cont.Image,
+						"status": cont.Status,
+						"state":  cont.State,
+					})
+				}
+			}
+			debugInfo["matching_containers"] = matchingContainers
+		}
+	} else {
+		debugInfo["docker_status"] = "unavailable"
+		if instance.ContainerID == "" {
+			debugInfo["container_id_empty"] = true
+		}
+	}
+
+	utils.ResponseSuccess(c, debugInfo)
 }
 
 // GetContainerInstanceByID 根据ID获取容器实例
@@ -321,9 +502,20 @@ func StartContainerInstance(c *gin.Context) {
 
 	// 启动Docker容器
 	if instance.ContainerID != "" {
+		fmt.Printf("尝试启动容器 ID: %s, 名称: %s\n", instance.ContainerID, instance.ContainerName)
+
 		if err := config.DockerCli.ContainerStart(context.Background(), instance.ContainerID, container.StartOptions{}); err != nil {
+			fmt.Printf("启动容器失败: %v\n", err)
 			utils.ResponseError(c, http.StatusInternalServerError, fmt.Sprintf("启动容器失败: %v", err))
 			return
+		}
+
+		// 验证容器是否真的启动了
+		containerInfo, err := config.DockerCli.ContainerInspect(context.Background(), instance.ContainerID)
+		if err != nil {
+			fmt.Printf("获取容器状态失败: %v\n", err)
+		} else {
+			fmt.Printf("容器当前状态: %s\n", containerInfo.State.Status)
 		}
 
 		// 更新数据库状态
@@ -333,6 +525,10 @@ func StartContainerInstance(c *gin.Context) {
 		}
 
 		fmt.Printf("容器实例 %s 启动成功\n", instance.ContainerName)
+	} else {
+		fmt.Printf("容器实例 %s 没有有效的容器ID，无法启动\n", instance.ContainerName)
+		utils.ResponseError(c, http.StatusBadRequest, "容器实例没有有效的容器ID")
+		return
 	}
 
 	utils.ResponseSuccess(c, "容器实例启动成功")
@@ -368,12 +564,23 @@ func StopContainerInstance(c *gin.Context) {
 
 	// 停止Docker容器
 	if instance.ContainerID != "" {
+		fmt.Printf("尝试停止容器 ID: %s, 名称: %s\n", instance.ContainerID, instance.ContainerName)
+
 		timeout := 30 // 30秒超时
 		if err := config.DockerCli.ContainerStop(context.Background(), instance.ContainerID, container.StopOptions{
 			Timeout: &timeout,
 		}); err != nil {
+			fmt.Printf("停止容器失败: %v\n", err)
 			utils.ResponseError(c, http.StatusInternalServerError, fmt.Sprintf("停止容器失败: %v", err))
 			return
+		}
+
+		// 验证容器是否真的停止了
+		containerInfo, err := config.DockerCli.ContainerInspect(context.Background(), instance.ContainerID)
+		if err != nil {
+			fmt.Printf("获取容器状态失败: %v\n", err)
+		} else {
+			fmt.Printf("容器当前状态: %s\n", containerInfo.State.Status)
 		}
 
 		// 更新数据库状态
@@ -383,6 +590,10 @@ func StopContainerInstance(c *gin.Context) {
 		}
 
 		fmt.Printf("容器实例 %s 停止成功\n", instance.ContainerName)
+	} else {
+		fmt.Printf("容器实例 %s 没有有效的容器ID，无法停止\n", instance.ContainerName)
+		utils.ResponseError(c, http.StatusBadRequest, "容器实例没有有效的容器ID")
+		return
 	}
 
 	utils.ResponseSuccess(c, "容器实例停止成功")
