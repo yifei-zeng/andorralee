@@ -72,13 +72,29 @@ func CreateMemoryContainerInstance(c *gin.Context) {
 	// 生成容器名称
 	containerName := fmt.Sprintf("%s-%s", req.HoneypotName, uuid.New().String()[:8])
 
-	// 准备端口映射
+	// 使用端口管理服务处理端口映射
+	pm := services.GetPortManager()
+	var finalPortMappings map[string]string
 	var mainPort int
-	for _, hostPort := range req.PortMappings {
-		if p, err := strconv.Atoi(hostPort); err == nil {
-			mainPort = p
-			break
+
+	if len(req.PortMappings) > 0 {
+		// 使用端口管理服务自动分配端口映射
+		allocatedMappings, err := pm.AutoAllocatePortMapping(containerName, req.PortMappings)
+		if err != nil {
+			utils.ResponseError(c, http.StatusInternalServerError, "端口分配失败: "+err.Error())
+			return
 		}
+		finalPortMappings = allocatedMappings
+
+		// 获取主端口
+		for _, hostPort := range finalPortMappings {
+			if p, err := strconv.Atoi(hostPort); err == nil {
+				mainPort = p
+				break
+			}
+		}
+	} else {
+		finalPortMappings = make(map[string]string)
 	}
 
 	// 如果Docker可用，创建真实容器
@@ -104,9 +120,11 @@ func CreateMemoryContainerInstance(c *gin.Context) {
 		portBindings := nat.PortMap{}
 		exposedPorts := nat.PortSet{}
 
-		for containerPort, hostPort := range req.PortMappings {
+		for containerPort, hostPort := range finalPortMappings {
 			port, err := nat.NewPort("tcp", containerPort)
 			if err != nil {
+				// 如果端口分配失败，释放已分配的端口
+				pm.ReleasePortsByContainer(containerName)
 				utils.ResponseError(c, http.StatusBadRequest, fmt.Sprintf("无效的容器端口 %s: %v", containerPort, err))
 				return
 			}
@@ -211,7 +229,7 @@ func CreateMemoryContainerInstance(c *gin.Context) {
 		Status:        containerStatus,
 		ImageName:     req.ImageName,
 		ImageID:       imageID,
-		PortMappings:  req.PortMappings,
+		PortMappings:  finalPortMappings,
 		Environment:   req.Environment,
 		CreateTime:    time.Now(),
 		UpdateTime:    time.Now(),
@@ -298,6 +316,14 @@ func DeleteMemoryContainerInstance(c *gin.Context) {
 	}
 	delete(memoryInstances, uint(id))
 	instanceMutex.Unlock()
+
+	// 释放端口
+	pm := services.GetPortManager()
+	if err := pm.ReleasePortsByContainer(instance.ContainerName); err != nil {
+		fmt.Printf("释放端口失败: %v\n", err)
+	} else {
+		fmt.Printf("容器 %s 的端口已释放\n", instance.ContainerName)
+	}
 
 	// 如果有真实容器，删除它
 	if config.DockerCli != nil && instance.ContainerID != "" && !strings.HasPrefix(instance.ContainerID, "mock") {

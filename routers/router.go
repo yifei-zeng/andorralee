@@ -253,6 +253,28 @@ func SetupRouter() *gin.Engine {
 			portScan.GET("/history", handlers.GetPortScanHistory) // 获取扫描历史
 		}
 
+		// ------------------------------ 端口管理接口 ------------------------------
+		ports := api.Group("/ports")
+		{
+			// 端口分配
+			ports.POST("/allocate", handlers.AllocatePort)                         // 自动分配端口
+			ports.POST("/allocate-specific", handlers.AllocateSpecificPort)        // 分配指定端口
+			ports.POST("/auto-allocate-mapping", handlers.AutoAllocatePortMapping) // 自动分配端口映射
+
+			// 端口释放
+			ports.DELETE("/:port/release", handlers.ReleasePort)                        // 释放端口
+			ports.DELETE("/container/:container_id/release", handlers.ReleasePortsByContainer) // 释放容器的所有端口
+
+			// 端口查询
+			ports.GET("/:port", handlers.GetPortAllocation)                    // 获取端口分配信息
+			ports.GET("/:port/check", handlers.CheckPortAvailability)          // 检查端口可用性
+			ports.GET("/allocated", handlers.GetAllocatedPorts)                // 获取所有已分配的端口
+			ports.GET("/container/:container_id", handlers.GetPortsByContainer) // 获取容器分配的端口
+			ports.POST("/available", handlers.GetAvailablePorts)               // 获取可用端口
+			ports.GET("/next-available", handlers.GetNextAvailablePort)        // 获取下一个可用端口
+			ports.GET("/statistics", handlers.GetPortStatistics)               // 获取端口统计信息
+		}
+
 		// ------------------------------ 日志导出接口 ------------------------------
 		logExport := api.Group("/logs")
 		{

@@ -30,7 +30,7 @@ type CreateContainerInstanceRequest struct {
 	ImageName     string            `json:"image_name" binding:"required"`    // Docker镜像名称
 	Protocol      string            `json:"protocol" binding:"required"`      // 协议类型
 	InterfaceType string            `json:"interface_type"`                   // 接口类型
-	PortMappings  map[string]string `json:"port_mappings"`                    // 端口映射
+	PortMappings  map[string]string `json:"port_mappings"`                    // 端口映射（支持"auto"自动分配）
 	Environment   map[string]string `json:"environment"`                      // 环境变量
 	Description   string            `json:"description"`                      // 描述
 	AutoStart     bool              `json:"auto_start"`                       // 是否自动启动
@@ -58,13 +58,29 @@ func CreateContainerInstance(c *gin.Context) {
 	// 2. 生成容器名称
 	containerName := fmt.Sprintf("%s-%s", req.HoneypotName, uuid.New().String()[:8])
 
-	// 3. 准备端口映射
+	// 3. 使用端口管理服务处理端口映射
+	pm := services.GetPortManager()
+	var finalPortMappings map[string]string
 	var mainPort int
-	for _, hostPort := range req.PortMappings {
-		if p, err := strconv.Atoi(hostPort); err == nil {
-			mainPort = p
-			break
+
+	if len(req.PortMappings) > 0 {
+		// 使用端口管理服务自动分配端口映射
+		allocatedMappings, err := pm.AutoAllocatePortMapping(containerName, req.PortMappings)
+		if err != nil {
+			utils.ResponseError(c, http.StatusInternalServerError, "端口分配失败: "+err.Error())
+			return
 		}
+		finalPortMappings = allocatedMappings
+
+		// 获取主端口
+		for _, hostPort := range finalPortMappings {
+			if p, err := strconv.Atoi(hostPort); err == nil {
+				mainPort = p
+				break
+			}
+		}
+	} else {
+		finalPortMappings = make(map[string]string)
 	}
 
 	// 4. 如果Docker可用，创建真实容器
@@ -86,13 +102,15 @@ func CreateContainerInstance(c *gin.Context) {
 			fmt.Printf("镜像 %s 拉取完成\n", req.ImageName)
 		}
 
-		// 准备端口映射
+		// 准备端口映射（使用分配后的端口）
 		portBindings := nat.PortMap{}
 		exposedPorts := nat.PortSet{}
 
-		for containerPort, hostPort := range req.PortMappings {
+		for containerPort, hostPort := range finalPortMappings {
 			port, err := nat.NewPort("tcp", containerPort)
 			if err != nil {
+				// 如果端口分配失败，释放已分配的端口
+				pm.ReleasePortsByContainer(containerName)
 				utils.ResponseError(c, http.StatusBadRequest, fmt.Sprintf("无效的容器端口 %s: %v", containerPort, err))
 				return
 			}
@@ -173,8 +191,8 @@ func CreateContainerInstance(c *gin.Context) {
 		fmt.Printf("模拟创建容器 %s (Docker不可用)\n", containerName)
 	}
 
-	// 5. 序列化配置
-	portMappingsJSON, _ := json.Marshal(req.PortMappings)
+	// 5. 序列化配置（使用分配后的端口映射）
+	portMappingsJSON, _ := json.Marshal(finalPortMappings)
 	environmentJSON, _ := json.Marshal(req.Environment)
 
 	// 6. 创建数据库记录
@@ -226,34 +244,38 @@ func CreateContainerInstance(c *gin.Context) {
 	fmt.Printf("创建容器实例 - 容器ID: %s, 状态: %s, Docker可用: %v\n", containerID, containerStatus, dockerAvailable)
 
 	if err := service.CreateInstance(instance); err != nil {
+		// 清理资源
 		if dockerAvailable && containerID != "" {
 			config.DockerCli.ContainerStop(context.Background(), containerID, container.StopOptions{})
 			config.DockerCli.ContainerRemove(context.Background(), containerID, container.RemoveOptions{Force: true})
 		}
+		// 释放已分配的端口
+		pm.ReleasePortsByContainer(containerName)
 		utils.ResponseError(c, http.StatusInternalServerError, fmt.Sprintf("保存实例记录失败: %v", err))
 		return
 	}
 
 	// 7. 返回创建结果
 	result := map[string]interface{}{
-		"id":               instance.ID,
-		"name":             instance.Name,
-		"honeypot_name":    instance.HoneypotName,
-		"container_name":   instance.ContainerName,
-		"container_id":     instance.ContainerID,
-		"ip":               instance.IP,
-		"honeypot_ip":      instance.HoneypotIP,
-		"port":             instance.Port,
-		"protocol":         instance.Protocol,
-		"interface_type":   instance.InterfaceType,
-		"status":           instance.Status,
-		"image_name":       instance.ImageName,
-		"image_id":         instance.ImageID,
-		"port_mappings":    req.PortMappings,
-		"environment":      req.Environment,
-		"create_time":      instance.CreateTime,
-		"description":      instance.Description,
-		"docker_available": dockerAvailable,
+		"id":                    instance.ID,
+		"name":                  instance.Name,
+		"honeypot_name":         instance.HoneypotName,
+		"container_name":        instance.ContainerName,
+		"container_id":          instance.ContainerID,
+		"ip":                    instance.IP,
+		"honeypot_ip":           instance.HoneypotIP,
+		"port":                  instance.Port,
+		"protocol":              instance.Protocol,
+		"interface_type":        instance.InterfaceType,
+		"status":                instance.Status,
+		"image_name":            instance.ImageName,
+		"image_id":              instance.ImageID,
+		"port_mappings":         finalPortMappings,        // 显示分配后的端口映射
+		"requested_port_mappings": req.PortMappings,       // 显示原始请求的端口映射
+		"environment":           req.Environment,
+		"create_time":           instance.CreateTime,
+		"description":           instance.Description,
+		"docker_available":      dockerAvailable,
 	}
 
 	utils.ResponseSuccess(c, result)
@@ -638,6 +660,14 @@ func DeleteContainerInstance(c *gin.Context) {
 		} else {
 			fmt.Printf("容器 %s 删除成功\n", instance.ContainerName)
 		}
+	}
+
+	// 释放端口
+	pm := services.GetPortManager()
+	if err := pm.ReleasePortsByContainer(instance.ContainerName); err != nil {
+		fmt.Printf("释放端口失败: %v\n", err)
+	} else {
+		fmt.Printf("容器 %s 的端口已释放\n", instance.ContainerName)
 	}
 
 	// 删除数据库记录
