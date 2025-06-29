@@ -158,3 +158,69 @@ type CowrieLogRepository interface {
 	GetTopPasswords(limit int) ([]map[string]interface{}, error)
 	GetTopFingerprints(limit int) ([]map[string]interface{}, error)
 }
+
+// HoneypotSessionRepository 蜜罐会话仓库接口
+type HoneypotSessionRepository interface {
+	Create(session *HoneypotSession) error
+	Update(session *HoneypotSession) error
+	GetByID(id uint) (*HoneypotSession, error)
+	GetBySessionID(sessionID string) (*HoneypotSession, error)
+	GetBySourceIP(sourceIP string) ([]HoneypotSession, error)
+	GetByContainerID(containerID string) ([]HoneypotSession, error)
+	GetActiveSessionsByIP(sourceIP string) ([]HoneypotSession, error)
+	GetByTimeRange(startTime, endTime time.Time) ([]HoneypotSession, error)
+	List() ([]HoneypotSession, error)
+	CloseSession(sessionID string, endTime time.Time) error
+	UpdateLastActivity(sessionID string, lastActivity time.Time) error
+	GetSessionStatistics() (map[string]interface{}, error)
+	Delete(id uint) error
+}
+
+// SessionEventRepository 会话事件仓库接口
+type SessionEventRepository interface {
+	Create(event *SessionEvent) error
+	CreateBatch(events []SessionEvent) error
+	GetBySessionID(sessionID string) ([]SessionEvent, error)
+	GetByEventType(eventType string) ([]SessionEvent, error)
+	GetByTimeRange(startTime, endTime time.Time) ([]SessionEvent, error)
+	List() ([]SessionEvent, error)
+	Delete(id uint) error
+	DeleteBySessionID(sessionID string) error
+}
+
+// ContainerRuntimeLogRepository 容器运行时日志仓库接口
+type ContainerRuntimeLogRepository interface {
+	Create(log *ContainerRuntimeLog) error
+	CreateBatch(logs []ContainerRuntimeLog) error
+	Update(log *ContainerRuntimeLog) error
+	GetByID(id uint) (*ContainerRuntimeLog, error)
+	GetByLogID(logID string) (*ContainerRuntimeLog, error)
+	GetByContainerID(containerID string) ([]ContainerRuntimeLog, error)
+	GetBySessionID(sessionID string) ([]ContainerRuntimeLog, error)
+	GetBySourceIP(sourceIP string) ([]ContainerRuntimeLog, error)
+	GetByEventType(eventType string) ([]ContainerRuntimeLog, error)
+	GetByProtocol(protocol string) ([]ContainerRuntimeLog, error)
+	GetByTimeRange(startTime, endTime time.Time) ([]ContainerRuntimeLog, error)
+	GetByUsername(username string) ([]ContainerRuntimeLog, error)
+	GetByCommand(command string) ([]ContainerRuntimeLog, error)
+	List() ([]ContainerRuntimeLog, error)
+	Delete(id uint) error
+	DeleteByContainerID(containerID string) error
+	GetStatistics() (map[string]interface{}, error)
+}
+
+// ContainerSessionSummaryRepository 容器会话汇总仓库接口
+type ContainerSessionSummaryRepository interface {
+	Create(summary *ContainerSessionSummary) error
+	Update(summary *ContainerSessionSummary) error
+	GetByID(id uint) (*ContainerSessionSummary, error)
+	GetBySessionID(sessionID string) (*ContainerSessionSummary, error)
+	GetByContainerID(containerID string) ([]ContainerSessionSummary, error)
+	GetBySourceIP(sourceIP string) ([]ContainerSessionSummary, error)
+	GetByTimeRange(startTime, endTime time.Time) ([]ContainerSessionSummary, error)
+	GetByThreatLevel(threatLevel string) ([]ContainerSessionSummary, error)
+	List() ([]ContainerSessionSummary, error)
+	Delete(id uint) error
+	DeleteByContainerID(containerID string) error
+	GetStatistics() (map[string]interface{}, error)
+}

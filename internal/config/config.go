@@ -168,6 +168,10 @@ func InitTables() error {
 		&repositories.DockerContainer{},
 		&repositories.HeadlingAuthLog{},
 		&repositories.CowrieLog{},
+		&repositories.HoneypotSession{},
+		&repositories.SessionEvent{},
+		&repositories.ContainerRuntimeLog{},
+		&repositories.ContainerSessionSummary{},
 	)
 
 	if err != nil {

@@ -944,3 +944,486 @@ func (r *MySQLCowrieLogRepo) GetTopFingerprints(limit int) ([]map[string]interfa
 		Find(&results)
 	return results, result.Error
 }
+
+// ================================ 蜜罐会话管理仓库 ================================
+
+// MySQLHoneypotSessionRepo MySQL蜜罐会话仓库实现
+type MySQLHoneypotSessionRepo struct {
+	DB *gorm.DB
+}
+
+// NewMySQLHoneypotSessionRepo 创建MySQL蜜罐会话仓库
+func NewMySQLHoneypotSessionRepo(db *gorm.DB) HoneypotSessionRepository {
+	return &MySQLHoneypotSessionRepo{DB: db}
+}
+
+// Create 创建蜜罐会话
+func (r *MySQLHoneypotSessionRepo) Create(session *HoneypotSession) error {
+	session.CreatedAt = time.Now()
+	session.UpdatedAt = time.Now()
+	return r.DB.Create(session).Error
+}
+
+// Update 更新蜜罐会话
+func (r *MySQLHoneypotSessionRepo) Update(session *HoneypotSession) error {
+	session.UpdatedAt = time.Now()
+	return r.DB.Save(session).Error
+}
+
+// GetByID 根据ID获取蜜罐会话
+func (r *MySQLHoneypotSessionRepo) GetByID(id uint) (*HoneypotSession, error) {
+	var session HoneypotSession
+	result := r.DB.First(&session, id)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &session, nil
+}
+
+// GetBySessionID 根据会话ID获取蜜罐会话
+func (r *MySQLHoneypotSessionRepo) GetBySessionID(sessionID string) (*HoneypotSession, error) {
+	var session HoneypotSession
+	result := r.DB.Where("session_id = ?", sessionID).First(&session)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &session, nil
+}
+
+// GetBySourceIP 根据源IP获取蜜罐会话
+func (r *MySQLHoneypotSessionRepo) GetBySourceIP(sourceIP string) ([]HoneypotSession, error) {
+	var sessions []HoneypotSession
+	result := r.DB.Where("source_ip = ?", sourceIP).Order("start_time DESC").Find(&sessions)
+	return sessions, result.Error
+}
+
+// GetByContainerID 根据容器ID获取蜜罐会话
+func (r *MySQLHoneypotSessionRepo) GetByContainerID(containerID string) ([]HoneypotSession, error) {
+	var sessions []HoneypotSession
+	result := r.DB.Where("container_id = ?", containerID).Order("start_time DESC").Find(&sessions)
+	return sessions, result.Error
+}
+
+// GetActiveSessionsByIP 获取指定IP的活跃会话
+func (r *MySQLHoneypotSessionRepo) GetActiveSessionsByIP(sourceIP string) ([]HoneypotSession, error) {
+	var sessions []HoneypotSession
+	result := r.DB.Where("source_ip = ? AND status = 'active'", sourceIP).Find(&sessions)
+	return sessions, result.Error
+}
+
+// GetByTimeRange 根据时间范围获取蜜罐会话
+func (r *MySQLHoneypotSessionRepo) GetByTimeRange(startTime, endTime time.Time) ([]HoneypotSession, error) {
+	var sessions []HoneypotSession
+	result := r.DB.Where("start_time BETWEEN ? AND ?", startTime, endTime).Order("start_time DESC").Find(&sessions)
+	return sessions, result.Error
+}
+
+// List 获取所有蜜罐会话
+func (r *MySQLHoneypotSessionRepo) List() ([]HoneypotSession, error) {
+	var sessions []HoneypotSession
+	result := r.DB.Order("start_time DESC").Find(&sessions)
+	return sessions, result.Error
+}
+
+// CloseSession 关闭会话
+func (r *MySQLHoneypotSessionRepo) CloseSession(sessionID string, endTime time.Time) error {
+	session, err := r.GetBySessionID(sessionID)
+	if err != nil {
+		return err
+	}
+
+	session.EndTime = &endTime
+	session.Status = "closed"
+
+	// 计算持续时长
+	if session.StartTime.Before(endTime) {
+		duration := int(endTime.Sub(session.StartTime).Seconds())
+		session.DurationSeconds = &duration
+	}
+
+	return r.Update(session)
+}
+
+// UpdateLastActivity 更新最后活动时间
+func (r *MySQLHoneypotSessionRepo) UpdateLastActivity(sessionID string, lastActivity time.Time) error {
+	return r.DB.Model(&HoneypotSession{}).Where("session_id = ?", sessionID).Update("last_activity", lastActivity).Error
+}
+
+// GetSessionStatistics 获取会话统计信息
+func (r *MySQLHoneypotSessionRepo) GetSessionStatistics() (map[string]interface{}, error) {
+	var stats map[string]interface{} = make(map[string]interface{})
+
+	// 总会话数
+	var totalSessions int64
+	r.DB.Model(&HoneypotSession{}).Count(&totalSessions)
+	stats["total_sessions"] = totalSessions
+
+	// 活跃会话数
+	var activeSessions int64
+	r.DB.Model(&HoneypotSession{}).Where("status = 'active'").Count(&activeSessions)
+	stats["active_sessions"] = activeSessions
+
+	// 已关闭会话数
+	var closedSessions int64
+	r.DB.Model(&HoneypotSession{}).Where("status = 'closed'").Count(&closedSessions)
+	stats["closed_sessions"] = closedSessions
+
+	// 平均会话持续时长
+	var avgDuration float64
+	r.DB.Model(&HoneypotSession{}).Where("duration_seconds IS NOT NULL").Select("AVG(duration_seconds)").Scan(&avgDuration)
+	stats["avg_duration_seconds"] = avgDuration
+
+	// 按协议统计
+	var protocolStats []map[string]interface{}
+	r.DB.Model(&HoneypotSession{}).Select("protocol, COUNT(*) as count").Group("protocol").Scan(&protocolStats)
+	stats["by_protocol"] = protocolStats
+
+	return stats, nil
+}
+
+// Delete 删除蜜罐会话
+func (r *MySQLHoneypotSessionRepo) Delete(id uint) error {
+	return r.DB.Delete(&HoneypotSession{}, id).Error
+}
+
+// ================================ 会话事件仓库 ================================
+
+// MySQLSessionEventRepo MySQL会话事件仓库实现
+type MySQLSessionEventRepo struct {
+	DB *gorm.DB
+}
+
+// NewMySQLSessionEventRepo 创建MySQL会话事件仓库
+func NewMySQLSessionEventRepo(db *gorm.DB) SessionEventRepository {
+	return &MySQLSessionEventRepo{DB: db}
+}
+
+// Create 创建会话事件
+func (r *MySQLSessionEventRepo) Create(event *SessionEvent) error {
+	event.CreatedAt = time.Now()
+	return r.DB.Create(event).Error
+}
+
+// CreateBatch 批量创建会话事件
+func (r *MySQLSessionEventRepo) CreateBatch(events []SessionEvent) error {
+	now := time.Now()
+	for i := range events {
+		events[i].CreatedAt = now
+	}
+	return r.DB.CreateInBatches(events, 100).Error
+}
+
+// GetBySessionID 根据会话ID获取事件
+func (r *MySQLSessionEventRepo) GetBySessionID(sessionID string) ([]SessionEvent, error) {
+	var events []SessionEvent
+	result := r.DB.Where("session_id = ?", sessionID).Order("event_time ASC").Find(&events)
+	return events, result.Error
+}
+
+// GetByEventType 根据事件类型获取事件
+func (r *MySQLSessionEventRepo) GetByEventType(eventType string) ([]SessionEvent, error) {
+	var events []SessionEvent
+	result := r.DB.Where("event_type = ?", eventType).Order("event_time DESC").Find(&events)
+	return events, result.Error
+}
+
+// GetByTimeRange 根据时间范围获取事件
+func (r *MySQLSessionEventRepo) GetByTimeRange(startTime, endTime time.Time) ([]SessionEvent, error) {
+	var events []SessionEvent
+	result := r.DB.Where("event_time BETWEEN ? AND ?", startTime, endTime).Order("event_time DESC").Find(&events)
+	return events, result.Error
+}
+
+// List 获取所有事件
+func (r *MySQLSessionEventRepo) List() ([]SessionEvent, error) {
+	var events []SessionEvent
+	result := r.DB.Order("event_time DESC").Find(&events)
+	return events, result.Error
+}
+
+// Delete 删除事件
+func (r *MySQLSessionEventRepo) Delete(id uint) error {
+	return r.DB.Delete(&SessionEvent{}, id).Error
+}
+
+// DeleteBySessionID 根据会话ID删除所有事件
+func (r *MySQLSessionEventRepo) DeleteBySessionID(sessionID string) error {
+	return r.DB.Where("session_id = ?", sessionID).Delete(&SessionEvent{}).Error
+}
+
+// ================================ 容器运行时日志仓库 ================================
+
+// MySQLContainerRuntimeLogRepo MySQL容器运行时日志仓库实现
+type MySQLContainerRuntimeLogRepo struct {
+	DB *gorm.DB
+}
+
+// NewMySQLContainerRuntimeLogRepo 创建MySQL容器运行时日志仓库
+func NewMySQLContainerRuntimeLogRepo(db *gorm.DB) ContainerRuntimeLogRepository {
+	return &MySQLContainerRuntimeLogRepo{DB: db}
+}
+
+// Create 创建容器运行时日志
+func (r *MySQLContainerRuntimeLogRepo) Create(log *ContainerRuntimeLog) error {
+	log.CreatedAt = time.Now()
+	log.UpdatedAt = time.Now()
+	return r.DB.Create(log).Error
+}
+
+// CreateBatch 批量创建容器运行时日志
+func (r *MySQLContainerRuntimeLogRepo) CreateBatch(logs []ContainerRuntimeLog) error {
+	now := time.Now()
+	for i := range logs {
+		logs[i].CreatedAt = now
+		logs[i].UpdatedAt = now
+	}
+	return r.DB.CreateInBatches(logs, 100).Error
+}
+
+// Update 更新容器运行时日志
+func (r *MySQLContainerRuntimeLogRepo) Update(log *ContainerRuntimeLog) error {
+	log.UpdatedAt = time.Now()
+	return r.DB.Save(log).Error
+}
+
+// GetByID 根据ID获取容器运行时日志
+func (r *MySQLContainerRuntimeLogRepo) GetByID(id uint) (*ContainerRuntimeLog, error) {
+	var log ContainerRuntimeLog
+	result := r.DB.First(&log, id)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &log, nil
+}
+
+// GetByLogID 根据日志ID获取容器运行时日志
+func (r *MySQLContainerRuntimeLogRepo) GetByLogID(logID string) (*ContainerRuntimeLog, error) {
+	var log ContainerRuntimeLog
+	result := r.DB.Where("log_id = ?", logID).First(&log)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &log, nil
+}
+
+// GetByContainerID 根据容器ID获取容器运行时日志
+func (r *MySQLContainerRuntimeLogRepo) GetByContainerID(containerID string) ([]ContainerRuntimeLog, error) {
+	var logs []ContainerRuntimeLog
+	result := r.DB.Where("container_id = ?", containerID).Order("log_timestamp DESC").Find(&logs)
+	return logs, result.Error
+}
+
+// GetBySessionID 根据会话ID获取容器运行时日志
+func (r *MySQLContainerRuntimeLogRepo) GetBySessionID(sessionID string) ([]ContainerRuntimeLog, error) {
+	var logs []ContainerRuntimeLog
+	result := r.DB.Where("session_id = ?", sessionID).Order("log_timestamp ASC").Find(&logs)
+	return logs, result.Error
+}
+
+// GetBySourceIP 根据源IP获取容器运行时日志
+func (r *MySQLContainerRuntimeLogRepo) GetBySourceIP(sourceIP string) ([]ContainerRuntimeLog, error) {
+	var logs []ContainerRuntimeLog
+	result := r.DB.Where("source_ip = ?", sourceIP).Order("log_timestamp DESC").Find(&logs)
+	return logs, result.Error
+}
+
+// GetByEventType 根据事件类型获取容器运行时日志
+func (r *MySQLContainerRuntimeLogRepo) GetByEventType(eventType string) ([]ContainerRuntimeLog, error) {
+	var logs []ContainerRuntimeLog
+	result := r.DB.Where("event_type = ?", eventType).Order("log_timestamp DESC").Find(&logs)
+	return logs, result.Error
+}
+
+// GetByProtocol 根据协议获取容器运行时日志
+func (r *MySQLContainerRuntimeLogRepo) GetByProtocol(protocol string) ([]ContainerRuntimeLog, error) {
+	var logs []ContainerRuntimeLog
+	result := r.DB.Where("protocol = ?", protocol).Order("log_timestamp DESC").Find(&logs)
+	return logs, result.Error
+}
+
+// GetByTimeRange 根据时间范围获取容器运行时日志
+func (r *MySQLContainerRuntimeLogRepo) GetByTimeRange(startTime, endTime time.Time) ([]ContainerRuntimeLog, error) {
+	var logs []ContainerRuntimeLog
+	result := r.DB.Where("log_timestamp BETWEEN ? AND ?", startTime, endTime).Order("log_timestamp DESC").Find(&logs)
+	return logs, result.Error
+}
+
+// GetByUsername 根据用户名获取容器运行时日志
+func (r *MySQLContainerRuntimeLogRepo) GetByUsername(username string) ([]ContainerRuntimeLog, error) {
+	var logs []ContainerRuntimeLog
+	result := r.DB.Where("username = ?", username).Order("log_timestamp DESC").Find(&logs)
+	return logs, result.Error
+}
+
+// GetByCommand 根据命令获取容器运行时日志
+func (r *MySQLContainerRuntimeLogRepo) GetByCommand(command string) ([]ContainerRuntimeLog, error) {
+	var logs []ContainerRuntimeLog
+	result := r.DB.Where("command LIKE ?", "%"+command+"%").Order("log_timestamp DESC").Find(&logs)
+	return logs, result.Error
+}
+
+// List 获取所有容器运行时日志
+func (r *MySQLContainerRuntimeLogRepo) List() ([]ContainerRuntimeLog, error) {
+	var logs []ContainerRuntimeLog
+	result := r.DB.Order("log_timestamp DESC").Find(&logs)
+	return logs, result.Error
+}
+
+// Delete 删除容器运行时日志
+func (r *MySQLContainerRuntimeLogRepo) Delete(id uint) error {
+	return r.DB.Delete(&ContainerRuntimeLog{}, id).Error
+}
+
+// DeleteByContainerID 根据容器ID删除所有容器运行时日志
+func (r *MySQLContainerRuntimeLogRepo) DeleteByContainerID(containerID string) error {
+	return r.DB.Where("container_id = ?", containerID).Delete(&ContainerRuntimeLog{}).Error
+}
+
+// GetStatistics 获取容器运行时日志统计信息
+func (r *MySQLContainerRuntimeLogRepo) GetStatistics() (map[string]interface{}, error) {
+	var stats map[string]interface{} = make(map[string]interface{})
+
+	// 总日志数
+	var totalLogs int64
+	r.DB.Model(&ContainerRuntimeLog{}).Count(&totalLogs)
+	stats["total_logs"] = totalLogs
+
+	// 按事件类型统计
+	var eventTypeStats []map[string]interface{}
+	r.DB.Model(&ContainerRuntimeLog{}).Select("event_type, COUNT(*) as count").Group("event_type").Scan(&eventTypeStats)
+	stats["by_event_type"] = eventTypeStats
+
+	// 按协议统计
+	var protocolStats []map[string]interface{}
+	r.DB.Model(&ContainerRuntimeLog{}).Select("protocol, COUNT(*) as count").Group("protocol").Scan(&protocolStats)
+	stats["by_protocol"] = protocolStats
+
+	// 按日志级别统计
+	var levelStats []map[string]interface{}
+	r.DB.Model(&ContainerRuntimeLog{}).Select("log_level, COUNT(*) as count").Group("log_level").Scan(&levelStats)
+	stats["by_log_level"] = levelStats
+
+	return stats, nil
+}
+
+// ================================ 容器会话汇总仓库 ================================
+
+// MySQLContainerSessionSummaryRepo MySQL容器会话汇总仓库实现
+type MySQLContainerSessionSummaryRepo struct {
+	DB *gorm.DB
+}
+
+// NewMySQLContainerSessionSummaryRepo 创建MySQL容器会话汇总仓库
+func NewMySQLContainerSessionSummaryRepo(db *gorm.DB) ContainerSessionSummaryRepository {
+	return &MySQLContainerSessionSummaryRepo{DB: db}
+}
+
+// Create 创建容器会话汇总
+func (r *MySQLContainerSessionSummaryRepo) Create(summary *ContainerSessionSummary) error {
+	summary.CreatedAt = time.Now()
+	summary.UpdatedAt = time.Now()
+	return r.DB.Create(summary).Error
+}
+
+// Update 更新容器会话汇总
+func (r *MySQLContainerSessionSummaryRepo) Update(summary *ContainerSessionSummary) error {
+	summary.UpdatedAt = time.Now()
+	return r.DB.Save(summary).Error
+}
+
+// GetByID 根据ID获取容器会话汇总
+func (r *MySQLContainerSessionSummaryRepo) GetByID(id uint) (*ContainerSessionSummary, error) {
+	var summary ContainerSessionSummary
+	result := r.DB.First(&summary, id)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &summary, nil
+}
+
+// GetBySessionID 根据会话ID获取容器会话汇总
+func (r *MySQLContainerSessionSummaryRepo) GetBySessionID(sessionID string) (*ContainerSessionSummary, error) {
+	var summary ContainerSessionSummary
+	result := r.DB.Where("session_id = ?", sessionID).First(&summary)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &summary, nil
+}
+
+// GetByContainerID 根据容器ID获取容器会话汇总
+func (r *MySQLContainerSessionSummaryRepo) GetByContainerID(containerID string) ([]ContainerSessionSummary, error) {
+	var summaries []ContainerSessionSummary
+	result := r.DB.Where("container_id = ?", containerID).Order("start_time DESC").Find(&summaries)
+	return summaries, result.Error
+}
+
+// GetBySourceIP 根据源IP获取容器会话汇总
+func (r *MySQLContainerSessionSummaryRepo) GetBySourceIP(sourceIP string) ([]ContainerSessionSummary, error) {
+	var summaries []ContainerSessionSummary
+	result := r.DB.Where("source_ip = ?", sourceIP).Order("start_time DESC").Find(&summaries)
+	return summaries, result.Error
+}
+
+// GetByTimeRange 根据时间范围获取容器会话汇总
+func (r *MySQLContainerSessionSummaryRepo) GetByTimeRange(startTime, endTime time.Time) ([]ContainerSessionSummary, error) {
+	var summaries []ContainerSessionSummary
+	result := r.DB.Where("start_time BETWEEN ? AND ?", startTime, endTime).Order("start_time DESC").Find(&summaries)
+	return summaries, result.Error
+}
+
+// GetByThreatLevel 根据威胁等级获取容器会话汇总
+func (r *MySQLContainerSessionSummaryRepo) GetByThreatLevel(threatLevel string) ([]ContainerSessionSummary, error) {
+	var summaries []ContainerSessionSummary
+	result := r.DB.Where("threat_level = ?", threatLevel).Order("start_time DESC").Find(&summaries)
+	return summaries, result.Error
+}
+
+// List 获取所有容器会话汇总
+func (r *MySQLContainerSessionSummaryRepo) List() ([]ContainerSessionSummary, error) {
+	var summaries []ContainerSessionSummary
+	result := r.DB.Order("start_time DESC").Find(&summaries)
+	return summaries, result.Error
+}
+
+// Delete 删除容器会话汇总
+func (r *MySQLContainerSessionSummaryRepo) Delete(id uint) error {
+	return r.DB.Delete(&ContainerSessionSummary{}, id).Error
+}
+
+// DeleteByContainerID 根据容器ID删除所有容器会话汇总
+func (r *MySQLContainerSessionSummaryRepo) DeleteByContainerID(containerID string) error {
+	return r.DB.Where("container_id = ?", containerID).Delete(&ContainerSessionSummary{}).Error
+}
+
+// GetStatistics 获取容器会话汇总统计信息
+func (r *MySQLContainerSessionSummaryRepo) GetStatistics() (map[string]interface{}, error) {
+	var stats map[string]interface{} = make(map[string]interface{})
+
+	// 总会话数
+	var totalSessions int64
+	r.DB.Model(&ContainerSessionSummary{}).Count(&totalSessions)
+	stats["total_sessions"] = totalSessions
+
+	// 按威胁等级统计
+	var threatStats []map[string]interface{}
+	r.DB.Model(&ContainerSessionSummary{}).Select("threat_level, COUNT(*) as count").Group("threat_level").Scan(&threatStats)
+	stats["by_threat_level"] = threatStats
+
+	// 按协议统计
+	var protocolStats []map[string]interface{}
+	r.DB.Model(&ContainerSessionSummary{}).Select("protocol, COUNT(*) as count").Group("protocol").Scan(&protocolStats)
+	stats["by_protocol"] = protocolStats
+
+	// 成功入侵统计
+	var successfulBreaches int64
+	r.DB.Model(&ContainerSessionSummary{}).Where("is_successful_breach = ?", true).Count(&successfulBreaches)
+	stats["successful_breaches"] = successfulBreaches
+
+	// 平均会话持续时长
+	var avgDuration float64
+	r.DB.Model(&ContainerSessionSummary{}).Where("duration_seconds IS NOT NULL").Select("AVG(duration_seconds)").Scan(&avgDuration)
+	stats["avg_duration_seconds"] = avgDuration
+
+	return stats, nil
+}

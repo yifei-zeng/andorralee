@@ -3,6 +3,7 @@ package handlers
 import (
 	"andorralee/internal/services"
 	"andorralee/pkg/utils"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -146,10 +147,10 @@ func ReleasePortsByContainer(c *gin.Context) {
 	}
 
 	pm := services.GetPortManager()
-	
+
 	// 获取容器的端口列表
 	ports := pm.GetPortsByContainer(containerID)
-	
+
 	err := pm.ReleasePortsByContainer(containerID)
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "释放容器端口失败: "+err.Error())
@@ -157,9 +158,9 @@ func ReleasePortsByContainer(c *gin.Context) {
 	}
 
 	utils.ResponseSuccess(c, gin.H{
-		"container_id":    containerID,
-		"released_ports":  ports,
-		"message":         "容器端口释放成功",
+		"container_id":   containerID,
+		"released_ports": ports,
+		"message":        "容器端口释放成功",
 	})
 }
 
@@ -256,7 +257,7 @@ func GetAvailablePorts(c *gin.Context) {
 	}
 
 	pm := services.GetPortManager()
-	
+
 	// 验证端口范围
 	if err := pm.ValidatePortRange(req.Start, req.End); err != nil {
 		utils.ResponseError(c, http.StatusBadRequest, "端口范围无效: "+err.Error())
@@ -348,9 +349,9 @@ func AutoAllocatePortMapping(c *gin.Context) {
 	}
 
 	utils.ResponseSuccess(c, gin.H{
-		"container_id":   req.ContainerID,
-		"port_mappings":  result,
-		"message":        "端口映射分配成功",
+		"container_id":  req.ContainerID,
+		"port_mappings": result,
+		"message":       "端口映射分配成功",
 	})
 }
 
@@ -388,5 +389,154 @@ func CheckPortAvailability(c *gin.Context) {
 	})
 }
 
-// 注意：这个方法需要在PortManager中公开isPortOccupied方法
-// 或者在这里重新实现端口占用检查逻辑
+// CreateFlexiblePortMapping 创建灵活的端口映射
+func CreateFlexiblePortMapping(c *gin.Context) {
+	type FlexiblePortMappingRequest struct {
+		ContainerPorts      []int             `json:"container_ports"`
+		PreferredHostPorts  []int             `json:"preferred_host_ports"`
+		ServiceType         string            `json:"service_type"`
+		ContainerName       string            `json:"container_name" binding:"required"`
+		AllowAutoAllocation bool              `json:"allow_auto_allocation"`
+		PortMappings        map[string]string `json:"port_mappings"`
+	}
+
+	var req FlexiblePortMappingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ResponseError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
+		return
+	}
+
+	// 验证请求参数
+	if len(req.PortMappings) == 0 && len(req.ContainerPorts) == 0 {
+		utils.ResponseError(c, http.StatusBadRequest, "必须提供 port_mappings 或 container_ports 中的一个")
+		return
+	}
+
+	pm := services.GetPortManager()
+	result := make(map[string]string)
+	allocatedPorts := make([]int, 0)
+
+	// 处理直接指定的端口映射
+	if len(req.PortMappings) > 0 {
+		for containerPort, hostPort := range req.PortMappings {
+			if hostPort == "" || hostPort == "auto" {
+				// 自动分配
+				if !req.AllowAutoAllocation {
+					utils.ResponseError(c, http.StatusBadRequest, "不允许自动分配端口，但端口映射中包含空值")
+					return
+				}
+
+				serviceType := req.ServiceType
+				if serviceType == "" {
+					serviceType = "general"
+				}
+
+				allocatedPort, err := pm.AllocatePort(req.ContainerName, serviceType, fmt.Sprintf("容器端口 %s 的自动映射", containerPort))
+				if err != nil {
+					// 释放已分配的端口
+					for _, port := range allocatedPorts {
+						pm.ReleasePort(port)
+					}
+					utils.ResponseError(c, http.StatusConflict, fmt.Sprintf("为容器端口 %s 分配主机端口失败: %v", containerPort, err))
+					return
+				}
+
+				result[containerPort] = strconv.Itoa(allocatedPort)
+				allocatedPorts = append(allocatedPorts, allocatedPort)
+			} else {
+				// 指定端口
+				hostPortInt, err := strconv.Atoi(hostPort)
+				if err != nil {
+					// 释放已分配的端口
+					for _, port := range allocatedPorts {
+						pm.ReleasePort(port)
+					}
+					utils.ResponseError(c, http.StatusBadRequest, fmt.Sprintf("无效的主机端口: %s", hostPort))
+					return
+				}
+
+				serviceType := req.ServiceType
+				if serviceType == "" {
+					serviceType = "general"
+				}
+
+				err = pm.AllocateSpecificPort(hostPortInt, req.ContainerName, serviceType, fmt.Sprintf("容器端口 %s 的指定映射", containerPort))
+				if err != nil {
+					// 释放已分配的端口
+					for _, port := range allocatedPorts {
+						pm.ReleasePort(port)
+					}
+					utils.ResponseError(c, http.StatusConflict, fmt.Sprintf("分配指定主机端口 %s 失败: %v", hostPort, err))
+					return
+				}
+
+				result[containerPort] = hostPort
+				allocatedPorts = append(allocatedPorts, hostPortInt)
+			}
+		}
+	} else {
+		// 使用容器端口和首选主机端口的方式
+		for i, containerPort := range req.ContainerPorts {
+			containerPortStr := strconv.Itoa(containerPort)
+
+			if i < len(req.PreferredHostPorts) && req.PreferredHostPorts[i] > 0 {
+				// 使用指定的主机端口
+				hostPort := req.PreferredHostPorts[i]
+
+				serviceType := req.ServiceType
+				if serviceType == "" {
+					serviceType = "general"
+				}
+
+				err := pm.AllocateSpecificPort(hostPort, req.ContainerName, serviceType, fmt.Sprintf("容器端口 %d 的指定映射", containerPort))
+				if err != nil {
+					// 释放已分配的端口
+					for _, port := range allocatedPorts {
+						pm.ReleasePort(port)
+					}
+					utils.ResponseError(c, http.StatusConflict, fmt.Sprintf("分配指定主机端口 %d 失败: %v", hostPort, err))
+					return
+				}
+
+				result[containerPortStr] = strconv.Itoa(hostPort)
+				allocatedPorts = append(allocatedPorts, hostPort)
+			} else {
+				// 自动分配
+				if !req.AllowAutoAllocation {
+					// 释放已分配的端口
+					for _, port := range allocatedPorts {
+						pm.ReleasePort(port)
+					}
+					utils.ResponseError(c, http.StatusBadRequest, "不允许自动分配端口，但没有为所有容器端口指定主机端口")
+					return
+				}
+
+				serviceType := req.ServiceType
+				if serviceType == "" {
+					serviceType = "general"
+				}
+
+				allocatedPort, err := pm.AllocatePort(req.ContainerName, serviceType, fmt.Sprintf("容器端口 %d 的自动映射", containerPort))
+				if err != nil {
+					// 释放已分配的端口
+					for _, port := range allocatedPorts {
+						pm.ReleasePort(port)
+					}
+					utils.ResponseError(c, http.StatusConflict, fmt.Sprintf("为容器端口 %d 分配主机端口失败: %v", containerPort, err))
+					return
+				}
+
+				result[containerPortStr] = strconv.Itoa(allocatedPort)
+				allocatedPorts = append(allocatedPorts, allocatedPort)
+			}
+		}
+	}
+
+	utils.ResponseSuccess(c, gin.H{
+		"port_mapping":    result,
+		"container_name":  req.ContainerName,
+		"allocated_ports": allocatedPorts,
+		"service_type":    req.ServiceType,
+		"message":         "灵活端口映射创建成功",
+	})
+}

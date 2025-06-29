@@ -284,3 +284,158 @@ type CowrieCommandStatistics struct {
 func (CowrieLog) TableName() string {
 	return "cowrie_log"
 }
+
+// HoneypotSession 蜜罐会话模型
+type HoneypotSession struct {
+	ID              uint       `json:"id" gorm:"primaryKey"`
+	SessionID       string     `json:"session_id" gorm:"size:36;not null;uniqueIndex;comment:会话唯一ID"`
+	SourceIP        string     `json:"source_ip" gorm:"size:45;not null;index;comment:攻击者IP"`
+	SourcePort      uint16     `json:"source_port" gorm:"not null;comment:攻击者端口"`
+	DestinationIP   string     `json:"destination_ip" gorm:"size:45;not null;comment:目标IP"`
+	DestinationPort uint16     `json:"destination_port" gorm:"not null;comment:目标端口"`
+	Protocol        string     `json:"protocol" gorm:"size:20;not null;index;comment:协议类型"`
+	ContainerID     string     `json:"container_id" gorm:"size:64;index;comment:关联的容器ID"`
+	ContainerName   string     `json:"container_name" gorm:"size:100;comment:容器名称"`
+	StartTime       time.Time  `json:"start_time" gorm:"not null;comment:会话开始时间"`
+	EndTime         *time.Time `json:"end_time" gorm:"comment:会话结束时间"`
+	DurationSeconds *int       `json:"duration_seconds" gorm:"comment:会话持续时长(秒)"`
+	Status          string     `json:"status" gorm:"type:enum('active','closed','timeout');default:'active';comment:会话状态"`
+	EventCount      int        `json:"event_count" gorm:"default:0;comment:事件数量"`
+	AuthAttempts    int        `json:"auth_attempts" gorm:"default:0;comment:认证尝试次数"`
+	CommandCount    int        `json:"command_count" gorm:"default:0;comment:命令执行次数"`
+	LastActivity    time.Time  `json:"last_activity" gorm:"not null;comment:最后活动时间"`
+	UserAgent       string     `json:"user_agent" gorm:"size:500;comment:用户代理"`
+	ClientInfo      string     `json:"client_info" gorm:"size:255;comment:客户端信息"`
+	Fingerprint     string     `json:"fingerprint" gorm:"size:64;comment:客户端指纹"`
+	CreatedAt       time.Time  `json:"created_at" gorm:"not null;comment:记录创建时间"`
+	UpdatedAt       time.Time  `json:"updated_at" gorm:"not null;comment:记录更新时间"`
+}
+
+func (HoneypotSession) TableName() string {
+	return "honeypot_session"
+}
+
+// SessionEvent 会话事件模型
+type SessionEvent struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	SessionID string    `json:"session_id" gorm:"size:36;not null;index;comment:会话ID"`
+	EventType string    `json:"event_type" gorm:"type:enum('connect','auth','command','disconnect','error');not null;comment:事件类型"`
+	EventTime time.Time `json:"event_time" gorm:"type:datetime(6);not null;comment:事件时间"`
+	Username  string    `json:"username" gorm:"size:255;comment:用户名"`
+	Password  string    `json:"password" gorm:"size:255;comment:密码"`
+	Command   string    `json:"command" gorm:"type:text;comment:命令内容"`
+	Response  string    `json:"response" gorm:"type:text;comment:响应内容"`
+	Success   *bool     `json:"success" gorm:"comment:操作是否成功"`
+	ErrorMsg  string    `json:"error_msg" gorm:"size:500;comment:错误信息"`
+	Details   string    `json:"details" gorm:"type:text;comment:详细信息"`
+	CreatedAt time.Time `json:"created_at" gorm:"not null;comment:记录创建时间"`
+}
+
+func (SessionEvent) TableName() string {
+	return "session_event"
+}
+
+// ContainerRuntimeLog 容器运行时日志模型
+type ContainerRuntimeLog struct {
+	ID              uint      `json:"id" gorm:"primaryKey"`
+	LogID           string    `json:"log_id" gorm:"size:36;not null;uniqueIndex;comment:日志唯一ID"`
+	ContainerID     string    `json:"container_id" gorm:"size:64;not null;index;comment:Docker容器ID"`
+	ContainerName   string    `json:"container_name" gorm:"size:100;comment:容器名称"`
+	ImageName       string    `json:"image_name" gorm:"size:200;comment:镜像名称"`
+	LogTimestamp    time.Time `json:"log_timestamp" gorm:"type:datetime(6);not null;index;comment:日志产生时间戳"`
+	LogLevel        string    `json:"log_level" gorm:"type:enum('DEBUG','INFO','WARN','ERROR','FATAL');not null;comment:日志级别"`
+	EventType       string    `json:"event_type" gorm:"type:enum('connection','authentication','command','response','disconnection','error','system');not null;index;comment:事件类型"`
+	SourceIP        string    `json:"source_ip" gorm:"size:45;index;comment:源IP地址"`
+	SourcePort      *uint16   `json:"source_port" gorm:"comment:源端口"`
+	DestinationIP   string    `json:"destination_ip" gorm:"size:45;comment:目标IP地址"`
+	DestinationPort *uint16   `json:"destination_port" gorm:"comment:目标端口"`
+	Protocol        string    `json:"protocol" gorm:"type:enum('tcp','udp','http','https','ssh','telnet','ftp','smtp','mysql','redis','other');not null;index;comment:协议类型"`
+	SessionID       string    `json:"session_id" gorm:"size:36;index;comment:会话ID"`
+	Username        string    `json:"username" gorm:"size:255;index;comment:用户名"`
+	Password        string    `json:"password" gorm:"size:255;comment:密码"`
+	PasswordHash    string    `json:"password_hash" gorm:"size:255;comment:密码哈希值"`
+	AuthSuccess     *bool     `json:"auth_success" gorm:"comment:认证是否成功"`
+	Command         string    `json:"command" gorm:"type:text;comment:执行的命令"`
+	CommandArgs     string    `json:"command_args" gorm:"type:text;comment:命令参数"`
+	Response        string    `json:"response" gorm:"type:text;comment:命令响应内容"`
+	ResponseCode    *int      `json:"response_code" gorm:"comment:响应状态码"`
+	ExecutionTimeMs *int      `json:"execution_time_ms" gorm:"comment:命令执行时间(毫秒)"`
+	UserAgent       string    `json:"user_agent" gorm:"size:500;comment:用户代理字符串"`
+	ClientInfo      string    `json:"client_info" gorm:"size:255;comment:客户端信息"`
+	Fingerprint     string    `json:"fingerprint" gorm:"size:64;comment:客户端指纹"`
+	RequestHeaders  string    `json:"request_headers" gorm:"type:json;comment:HTTP请求头"`
+	ResponseHeaders string    `json:"response_headers" gorm:"type:json;comment:HTTP响应头"`
+	RequestBody     string    `json:"request_body" gorm:"type:text;comment:请求体内容"`
+	ResponseBody    string    `json:"response_body" gorm:"type:text;comment:响应体内容"`
+	FilePath        string    `json:"file_path" gorm:"size:500;comment:涉及的文件路径"`
+	FileOperation   string    `json:"file_operation" gorm:"type:enum('read','write','create','delete','modify','execute');comment:文件操作类型"`
+	ProcessID       *int      `json:"process_id" gorm:"comment:进程ID"`
+	ProcessName     string    `json:"process_name" gorm:"size:100;comment:进程名称"`
+	ParentProcessID *int      `json:"parent_process_id" gorm:"comment:父进程ID"`
+	CPUUsage        *float64  `json:"cpu_usage" gorm:"type:decimal(5,2);comment:CPU使用率(%)"`
+	MemoryUsage     *int64    `json:"memory_usage" gorm:"comment:内存使用量(字节)"`
+	NetworkBytesIn  *int64    `json:"network_bytes_in" gorm:"comment:网络入流量(字节)"`
+	NetworkBytesOut *int64    `json:"network_bytes_out" gorm:"comment:网络出流量(字节)"`
+	ErrorMessage    string    `json:"error_message" gorm:"type:text;comment:错误信息"`
+	StackTrace      string    `json:"stack_trace" gorm:"type:text;comment:错误堆栈"`
+	RawLogLine      string    `json:"raw_log_line" gorm:"type:text;not null;comment:原始日志行"`
+	ParsedFields    string    `json:"parsed_fields" gorm:"type:json;comment:解析出的额外字段"`
+	Tags            string    `json:"tags" gorm:"type:json;comment:标签信息"`
+	SeverityScore   *int      `json:"severity_score" gorm:"comment:威胁严重程度评分(1-10)"`
+	IsMalicious     bool      `json:"is_malicious" gorm:"default:false;comment:是否为恶意行为"`
+	DetectionRules  string    `json:"detection_rules" gorm:"type:json;comment:触发的检测规则"`
+	Geolocation     string    `json:"geolocation" gorm:"type:json;comment:IP地理位置信息"`
+	CreatedAt       time.Time `json:"created_at" gorm:"not null;comment:记录创建时间"`
+	UpdatedAt       time.Time `json:"updated_at" gorm:"not null;comment:记录更新时间"`
+}
+
+func (ContainerRuntimeLog) TableName() string {
+	return "container_runtime_log"
+}
+
+// ContainerSessionSummary 容器会话汇总模型
+type ContainerSessionSummary struct {
+	ID                 uint       `json:"id" gorm:"primaryKey"`
+	SessionID          string     `json:"session_id" gorm:"size:36;not null;uniqueIndex;comment:会话唯一ID"`
+	ContainerID        string     `json:"container_id" gorm:"size:64;not null;index;comment:Docker容器ID"`
+	ContainerName      string     `json:"container_name" gorm:"size:100;comment:容器名称"`
+	SourceIP           string     `json:"source_ip" gorm:"size:45;not null;index;comment:攻击者IP"`
+	SourcePort         *uint16    `json:"source_port" gorm:"comment:攻击者端口"`
+	DestinationIP      string     `json:"destination_ip" gorm:"size:45;comment:目标IP"`
+	DestinationPort    *uint16    `json:"destination_port" gorm:"comment:目标端口"`
+	Protocol           string     `json:"protocol" gorm:"size:20;not null;index;comment:主要协议"`
+	StartTime          time.Time  `json:"start_time" gorm:"type:datetime(6);not null;index;comment:会话开始时间"`
+	EndTime            *time.Time `json:"end_time" gorm:"type:datetime(6);comment:会话结束时间"`
+	DurationSeconds    *int       `json:"duration_seconds" gorm:"comment:会话持续时长(秒)"`
+	TotalEvents        int        `json:"total_events" gorm:"default:0;comment:总事件数"`
+	ConnectionEvents   int        `json:"connection_events" gorm:"default:0;comment:连接事件数"`
+	AuthAttempts       int        `json:"auth_attempts" gorm:"default:0;comment:认证尝试次数"`
+	SuccessfulAuths    int        `json:"successful_auths" gorm:"default:0;comment:成功认证次数"`
+	FailedAuths        int        `json:"failed_auths" gorm:"default:0;comment:失败认证次数"`
+	CommandExecutions  int        `json:"command_executions" gorm:"default:0;comment:命令执行次数"`
+	SuccessfulCommands int        `json:"successful_commands" gorm:"default:0;comment:成功命令数"`
+	FailedCommands     int        `json:"failed_commands" gorm:"default:0;comment:失败命令数"`
+	FileOperations     int        `json:"file_operations" gorm:"default:0;comment:文件操作次数"`
+	ErrorEvents        int        `json:"error_events" gorm:"default:0;comment:错误事件数"`
+	UniqueUsernames    int        `json:"unique_usernames" gorm:"default:0;comment:尝试的用户名数量"`
+	UniquePasswords    int        `json:"unique_passwords" gorm:"default:0;comment:尝试的密码数量"`
+	UniqueCommands     int        `json:"unique_commands" gorm:"default:0;comment:执行的唯一命令数"`
+	TotalBytesIn       int64      `json:"total_bytes_in" gorm:"default:0;comment:总入流量(字节)"`
+	TotalBytesOut      int64      `json:"total_bytes_out" gorm:"default:0;comment:总出流量(字节)"`
+	MaxCPUUsage        *float64   `json:"max_cpu_usage" gorm:"type:decimal(5,2);comment:最大CPU使用率"`
+	MaxMemoryUsage     *int64     `json:"max_memory_usage" gorm:"comment:最大内存使用量"`
+	ClientInfo         string     `json:"client_info" gorm:"size:255;comment:客户端信息"`
+	UserAgent          string     `json:"user_agent" gorm:"size:500;comment:用户代理"`
+	Fingerprint        string     `json:"fingerprint" gorm:"size:64;comment:客户端指纹"`
+	Geolocation        string     `json:"geolocation" gorm:"type:json;comment:IP地理位置"`
+	ThreatLevel        string     `json:"threat_level" gorm:"type:enum('low','medium','high','critical');comment:威胁等级"`
+	IsSuccessfulBreach bool       `json:"is_successful_breach" gorm:"default:false;comment:是否成功入侵"`
+	AttackPatterns     string     `json:"attack_patterns" gorm:"type:json;comment:识别的攻击模式"`
+	SessionStatus      string     `json:"session_status" gorm:"type:enum('active','completed','timeout','error');default:'active';comment:会话状态"`
+	CreatedAt          time.Time  `json:"created_at" gorm:"not null;comment:记录创建时间"`
+	UpdatedAt          time.Time  `json:"updated_at" gorm:"not null;comment:记录更新时间"`
+}
+
+func (ContainerSessionSummary) TableName() string {
+	return "container_session_summary"
+}
