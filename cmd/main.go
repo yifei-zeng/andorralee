@@ -47,6 +47,11 @@ func main() {
 		fmt.Println("达梦数据库连接成功！")
 	}
 
+	// 初始化病毒检测器
+	fmt.Println("正在初始化病毒检测器...")
+	handlers.InitMalwareDetector()
+	fmt.Println("病毒检测器初始化完成！")
+
 	// 初始化路由
 	r := routers.SetupRouter() // 通过路由包获取已配置的 Gin 引擎
 

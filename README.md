@@ -1,203 +1,181 @@
-# 🍯 Andorralee 蜜罐管理系统
+# Andorralee 蜜罐管理系统
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Go Version](https://img.shields.io/badge/go-1.23.4-blue.svg)](https://golang.org)
-[![Docker](https://img.shields.io/badge/docker-20.10+-blue.svg)](https://docker.com)
+一个基于 Go 语言开发的现代化蜜罐管理系统，集成了智能端口管理和病毒检测功能。
 
-一个现代化的蜜罐管理平台，支持容器化部署和智能分析。
+## 🚀 核心特性
 
-## ✨ 核心特性
+### 🐳 容器管理
+- **Docker 镜像管理** - 拉取、构建、删除镜像
+- **容器实例管理** - 创建、启动、停止、删除蜜罐容器
+- **内存容器支持** - 虚拟容器实例，无需真实Docker环境
 
-- 🐳 **容器化管理** - 基于Docker的蜜罐实例管理
-- 🌐 **多协议支持** - SSH、HTTP、FTP、Telnet、MySQL等
-- 📊 **实时日志分析** - Cowrie和Headling蜜罐日志处理  
-- 🤖 **AI智能分析** - 日志语义分割和攻击行为分析
-- 💾 **多数据库支持** - MySQL和达梦数据库
-- 🔌 **RESTful API** - 完整的REST API接口
-- 🇨🇳 **银河麒麟兼容** - 专门优化的国产化部署
+### 🔌 智能端口管理 (NEW!)
+- **自动端口分配** - 智能分配空闲端口，避免冲突
+- **服务类型识别** - 根据服务类型(MySQL/SSH/HTTP)选择合适端口范围
+- **端口生命周期管理** - 容器删除时自动释放端口
+- **端口冲突检测** - 实时检测端口占用状态
+
+### 🛡️ 病毒检测系统 (NEW!)
+- **多重检测引擎** - 哈希匹配、字符串特征、模糊匹配
+- **PE文件分析** - Windows可执行文件深度分析
+- **启发式检测** - 基于行为特征的智能检测
+- **实时威胁感知** - 自动检测上传/下载的恶意文件
+
+### 🔍 安全功能
+- **端口扫描** - 内置端口扫描和检测
+- **攻击溯源** - 记录攻击来源和传播路径
+- **实时监控** - 蜜罐活动实时监控
+- **日志管理** - 完整的操作和安全日志
 
 ## 🚀 快速开始
 
-### 一键部署
+### 环境要求
+- Go 1.19+
+- Docker (可选，支持无Docker模式)
+- MySQL 或达梦数据库 (可选)
 
+### 一键启动
 ```bash
-# 克隆项目
-git clone <项目地址>
+# 1. 克隆项目
+git clone https://github.com/yifei-zeng/andorralee.git
 cd andorralee
 
-# Docker部署 (推荐)
-docker-compose up -d
-
-# 银河麒麟系统专用部署
-./deploy-kylin.sh
-```
-
-### 验证安装
-
-```bash
-# 检查服务状态
-curl http://localhost:8081/api/v1/health
-
-# 访问调试界面
-http://localhost:8081/static/debug-container.html
-```
-
-## 📚 快速使用
-
-### 创建蜜罐实例
-
-```bash
-curl -X POST http://localhost:8081/api/v1/container-instances \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "SSH蜜罐1",
-    "honeypot_name": "ssh-honeypot-1", 
-    "image_name": "ubuntu:20.04",
-    "protocol": "ssh",
-    "port_mappings": {"22": "2222"},
-    "auto_start": true
-  }'
-```
-
-### 管理容器
-
-```bash
-# 获取所有容器
-curl http://localhost:8081/api/v1/container-instances
-
-# 启动容器
-curl -X POST http://localhost:8081/api/v1/container-instances/1/start
-
-# 停止容器  
-curl -X POST http://localhost:8081/api/v1/container-instances/1/stop
-
-# 同步状态
-curl -X POST http://localhost:8081/api/v1/container-instances/sync
-```
-
-### 日志分析
-
-```bash
-# 拉取认证日志
-curl -X POST http://localhost:8081/api/v1/headling/pull-logs \
-  -d '{"container_id": "your_container_id"}'
-
-# 获取攻击统计
-curl http://localhost:8081/api/v1/headling/statistics
-
-# 获取顶级攻击者
-curl http://localhost:8081/api/v1/headling/top-attackers?limit=10
-```
-
-## 🔧 主要API接口
-
-| 分类 | 方法 | 路径 | 描述 |
-|------|------|------|------|
-| **健康检查** | GET | `/health` | 简单健康检查 |
-| | GET | `/api/v1/health` | 详细健康检查 |
-| **容器管理** | POST | `/api/v1/container-instances` | 创建容器实例 |
-| | GET | `/api/v1/container-instances` | 获取所有容器 |
-| | POST | `/api/v1/container-instances/:id/start` | 启动容器 |
-| | POST | `/api/v1/container-instances/:id/stop` | 停止容器 |
-| **Docker管理** | GET | `/api/v1/docker/images` | 获取镜像列表 |
-| | POST | `/api/v1/docker/pull` | 拉取镜像 |
-| **日志分析** | POST | `/api/v1/headling/pull-logs` | 拉取认证日志 |
-| | POST | `/api/v1/cowrie/pull-logs` | 拉取Cowrie日志 |
-| | GET | `/api/v1/headling/statistics` | 获取统计信息 |
-
-## 🛠️ 开发环境
-
-### 环境要求
-
-- **Go**: 1.23.4+
-- **Docker**: 20.10+  
-- **数据库**: MySQL 8.0+ 或 达梦数据库 V8+
-- **内存**: 4GB+ (推荐8GB)
-- **存储**: 20GB+
-
-### 本地开发
-
-```bash
-# 安装依赖
+# 2. 安装依赖
 go mod tidy
 
-# 编译项目
-go build -o andorralee ./cmd/main.go
+# 3. 编译运行
+go build cmd/main.go
+./main
 
-# 启动服务
-./andorralee
+# 4. 访问系统
+# http://localhost:8081
 ```
 
-### 环境变量配置
+## 🎯 新功能演示
 
+### 智能端口管理
 ```bash
-# MySQL配置
-MYSQL_HOST=localhost
-MYSQL_PORT=3306
-MYSQL_USER=root
-MYSQL_PASSWORD=123456
-MYSQL_DATABASE=andorralee
+# 自动分配端口
+curl -X POST http://localhost:8081/api/v1/container-instances \
+  -d '{
+    "name": "MySQL蜜罐",
+    "image_name": "mysql:8.0",
+    "port_mappings": {
+      "3306": "auto"  # 自动分配MySQL服务端口
+    }
+  }'
 
-# 达梦数据库配置  
-DAMENG_HOST=localhost
-DAMENG_PORT=5236
-DAMENG_USER=SYSDBA
-DAMENG_PASSWORD=DAMENG123
+# 响应: 自动分配到13306端口
+{
+  "port_mappings": {"3306": "13306"},
+  "message": "端口自动分配成功"
+}
 ```
 
-## 🧪 测试工具
+### 病毒检测API
+```bash
+# 扫描上传文件
+curl -X POST http://localhost:8081/api/v1/malware/scan/file \
+  -F "file=@suspicious.exe" \
+  -F "source_ip=192.168.1.100"
 
-### Web调试界面
-访问: `http://localhost:8081/static/debug-container.html`
+# 响应: 检测结果
+{
+  "scan_result": {
+    "is_malware": true,
+    "threat_level": "HIGH",
+    "detected_by": ["Hash-SHA256", "PE-Analysis"],
+    "signatures": [...]
+  }
+}
+```
 
-### PowerShell测试脚本
+## 📚 主要API接口
+
+### 端口管理
+- `POST /api/v1/ports/allocate` - 自动分配端口
+- `POST /api/v1/ports/allocate-specific` - 分配指定端口
+- `GET /api/v1/ports/statistics` - 获取端口统计
+- `DELETE /api/v1/ports/{port}/release` - 释放端口
+
+### 病毒检测
+- `POST /api/v1/malware/scan/file` - 文件扫描
+- `POST /api/v1/malware/scan/url` - URL扫描
+- `POST /api/v1/malware/scan/batch` - 批量扫描
+- `GET /api/v1/malware/statistics` - 检测统计
+
+### 容器管理
+- `GET/POST/PUT/DELETE /api/v1/container-instances` - 容器实例管理
+- `GET/POST/DELETE /api/v1/memory-containers` - 内存容器管理
+- `GET/POST/DELETE /api/v1/images` - 镜像管理
+
+## 🧪 功能测试
+
+### 端口管理测试
 ```powershell
-# 运行完整测试
-.\test-container-api.ps1 -Verbose
+# 运行端口管理测试
+.\test-port-management.ps1
 
-# 自定义服务器测试
-.\test-container-api.ps1 -BaseUrl "http://192.168.1.100:8081"
+# 详细输出
+.\test-port-management.ps1 -Verbose
 ```
 
-### Linux修复脚本
-```bash
-# 问题诊断和修复
-chmod +x fix-container-issues.sh
-./fix-container-issues.sh
+### 病毒检测测试
+```powershell
+# 运行病毒检测测试
+.\test-malware-detection.ps1
+
+# 指定服务器
+.\test-malware-detection.ps1 -BaseUrl "http://your-server:8081/api/v1"
 ```
 
-## 📖 文档
-
-- 📘 [完整使用指南](Andorralee蜜罐管理系统使用指南.md) - 详细的API文档和使用示例
-- 🐧 [银河麒麟部署指南](银河麒麟Docker部署指南.md) - 国产化系统部署
-- 🚀 [快速开始指南](docs/quick_start_guide.md) - 新手入门
-- 💻 [PowerShell操作指南](docs/powershell_operations_guide.md) - Windows用户指南
-
-## 🔒 安全建议
-
-- 定期更新系统和依赖
-- 使用强密码和密钥认证
-- 限制网络访问和端口开放
-- 定期备份重要数据
-- 监控系统异常活动
-
-## 📊 项目结构
+## 📁 项目结构
 
 ```
 andorralee/
-├── cmd/                    # 应用入口
-├── internal/               # 内部包
-│   ├── config/            # 配置管理
-│   ├── handlers/          # HTTP处理器
-│   ├── services/          # 业务逻辑
-│   └── repositories/      # 数据访问
-├── pkg/                   # 公共包
-├── routers/               # 路由配置
-├── static/                # 静态资源
-├── docs/                  # 文档
-├── scripts/               # 部署脚本
-└── docker-compose.yml     # Docker编排
+├── cmd/main.go                           # 主程序入口
+├── internal/
+│   ├── handlers/                         # HTTP处理器
+│   │   ├── malware_detection_handler.go  # 病毒检测API
+│   │   └── port_manager_handler.go       # 端口管理API
+│   ├── services/                         # 业务逻辑
+│   │   ├── malware_detection_service.go  # 病毒检测引擎
+│   │   ├── port_manager_service.go       # 端口管理服务
+│   │   ├── string_matcher.go             # 字符串匹配器
+│   │   └── pe_analyzer.go                # PE文件分析器
+│   └── config/                           # 配置管理
+├── docs/                                 # 文档
+│   ├── port_management_guide.md          # 功能使用指南
+│   ├── malware_detection_design.md       # 病毒检测设计
+│   └── malware_detection_detailed_guide.md # 病毒检测详细指南
+├── test-port-management.ps1              # 端口管理测试
+├── test-malware-detection.ps1            # 病毒检测测试
+└── routers/router.go                     # 路由配置
 ```
+
+## 🌟 使用场景
+
+### 1. 智能蜜罐部署
+自动分配端口，避免冲突，支持多服务蜜罐
+
+### 2. 恶意文件检测
+实时检测上传文件，自动识别威胁
+
+### 3. 攻击溯源分析
+记录攻击来源，分析恶意文件特征
+
+## 🔒 安全特性
+
+- **端口冲突自动检测**
+- **多层恶意软件检测**
+- **实时威胁感知**
+- **自动样本隔离**
+
+## 📖 详细文档
+
+- [功能使用指南](docs/port_management_guide.md)
+- [病毒检测设计](docs/malware_detection_design.md)
+- [病毒检测详细指南](docs/malware_detection_detailed_guide.md)
 
 ## 🤝 贡献指南
 
@@ -205,19 +183,12 @@ andorralee/
 2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
 3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 创建 Pull Request
-
-## 📞 技术支持
-
-- 📧 **邮箱**: support@andorralee.com
-- 🐛 **问题反馈**: [GitHub Issues](https://github.com/andorralee/issues)
-- 💬 **技术交流**: QQ群 123456789
-- 📖 **在线文档**: [使用指南](Andorralee蜜罐管理系统使用指南.md)
+5. 发起 Pull Request
 
 ## 📄 许可证
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+本项目采用 MIT 许可证。
 
 ---
 
-**让蜜罐管理更简单！** 🍯🐳
+**Andorralee** - 让蜜罐管理更智能、更安全！ 🍯🛡️

@@ -262,17 +262,40 @@ func SetupRouter() *gin.Engine {
 			ports.POST("/auto-allocate-mapping", handlers.AutoAllocatePortMapping) // 自动分配端口映射
 
 			// 端口释放
-			ports.DELETE("/:port/release", handlers.ReleasePort)                        // 释放端口
+			ports.DELETE("/:port/release", handlers.ReleasePort)                               // 释放端口
 			ports.DELETE("/container/:container_id/release", handlers.ReleasePortsByContainer) // 释放容器的所有端口
 
 			// 端口查询
-			ports.GET("/:port", handlers.GetPortAllocation)                    // 获取端口分配信息
-			ports.GET("/:port/check", handlers.CheckPortAvailability)          // 检查端口可用性
-			ports.GET("/allocated", handlers.GetAllocatedPorts)                // 获取所有已分配的端口
+			ports.GET("/:port", handlers.GetPortAllocation)                     // 获取端口分配信息
+			ports.GET("/:port/check", handlers.CheckPortAvailability)           // 检查端口可用性
+			ports.GET("/allocated", handlers.GetAllocatedPorts)                 // 获取所有已分配的端口
 			ports.GET("/container/:container_id", handlers.GetPortsByContainer) // 获取容器分配的端口
-			ports.POST("/available", handlers.GetAvailablePorts)               // 获取可用端口
-			ports.GET("/next-available", handlers.GetNextAvailablePort)        // 获取下一个可用端口
-			ports.GET("/statistics", handlers.GetPortStatistics)               // 获取端口统计信息
+			ports.POST("/available", handlers.GetAvailablePorts)                // 获取可用端口
+			ports.GET("/next-available", handlers.GetNextAvailablePort)         // 获取下一个可用端口
+			ports.GET("/statistics", handlers.GetPortStatistics)                // 获取端口统计信息
+		}
+
+		// ------------------------------ 病毒检测接口 ------------------------------
+		malware := api.Group("/malware")
+		{
+			// 文件扫描
+			malware.POST("/scan/file", handlers.ScanFile)   // 扫描上传文件
+			malware.POST("/scan/url", handlers.ScanURL)     // 扫描URL文件
+			malware.POST("/scan/batch", handlers.BatchScan) // 批量扫描文件
+
+			// 扫描结果
+			malware.GET("/results/:hash", handlers.GetScanResult)       // 获取扫描结果
+			malware.GET("/statistics", handlers.GetDetectionStatistics) // 获取检测统计
+
+			// 病毒特征管理
+			signatures := malware.Group("/signatures")
+			{
+				signatures.GET("", handlers.GetSignatures)           // 获取特征列表
+				signatures.POST("", handlers.AddSignature)           // 添加特征
+				signatures.PUT("/:id", handlers.UpdateSignature)     // 更新特征
+				signatures.DELETE("/:id", handlers.DeleteSignature)  // 删除特征
+				signatures.POST("/:id/test", handlers.TestSignature) // 测试特征
+			}
 		}
 
 		// ------------------------------ 日志导出接口 ------------------------------
