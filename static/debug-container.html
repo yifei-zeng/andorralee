@@ -480,13 +480,32 @@
                 return;
             }
             
+            // 根据协议类型设置默认端口映射
+            let defaultPortMappings = {};
+            switch(protocol) {
+                case 'ssh':
+                    defaultPortMappings = {"22": "12345"};
+                    break;
+                case 'http':
+                    defaultPortMappings = {"80": "12347"};
+                    break;
+                case 'ftp':
+                    defaultPortMappings = {"21": "auto"};
+                    break;
+                case 'telnet':
+                    defaultPortMappings = {"23": "auto"};
+                    break;
+                default:
+                    defaultPortMappings = {"80": "12346"};
+            }
+
             const data = {
                 name: name,
                 honeypot_name: name,
                 image_name: imageName,
                 protocol: protocol,
                 interface_type: "network",
-                port_mappings: {"80": "8080"},
+                port_mappings: defaultPortMappings,
                 environment: {"TEST": "true"},
                 description: "通过调试工具创建的测试容器"
             };

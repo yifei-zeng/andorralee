@@ -273,6 +273,7 @@ func SetupRouter() *gin.Engine {
 			ports.POST("/available", handlers.GetAvailablePorts)                // 获取可用端口
 			ports.GET("/next-available", handlers.GetNextAvailablePort)         // 获取下一个可用端口
 			ports.GET("/statistics", handlers.GetPortStatistics)                // 获取端口统计信息
+			ports.POST("/flexible-mapping", handlers.CreateFlexiblePortMapping) // 灵活端口映射
 		}
 
 		// ------------------------------ 病毒检测接口 ------------------------------
@@ -305,17 +306,6 @@ func SetupRouter() *gin.Engine {
 			logExport.GET("/statistics", handlers.GetLogStatistics) // 获取日志统计
 		}
 
-		// ------------------------------ 容器日志分析接口 ------------------------------
-		containerLogs := api.Group("/container-logs")
-		{
-			containerLogs.GET("/segments", handlers.GetAllContainerLogSegments)                                // 获取所有日志分析结果
-			containerLogs.GET("/segments/:id", handlers.GetContainerLogSegmentByID)                            // 根据ID获取分析结果
-			containerLogs.GET("/segments/container/:container_id", handlers.GetLogSegmentsByContainerID)       // 根据容器ID获取分析结果
-			containerLogs.GET("/segments/type/:type", handlers.GetLogSegmentsByType)                           // 根据类型获取分析结果
-			containerLogs.DELETE("/segments/:id", handlers.DeleteContainerLogSegment)                          // 删除分析结果
-			containerLogs.DELETE("/segments/container/:container_id", handlers.DeleteLogSegmentsByContainerID) // 删除容器相关分析结果
-		}
-
 		// ------------------------------ Docker镜像日志接口 ------------------------------
 		docker.GET("/image-logs", handlers.GetAllDockerImageLogs)                       // 获取所有镜像操作日志
 		docker.GET("/image-logs/:id", handlers.GetDockerImageLogByID)                   // 根据ID获取镜像操作日志
@@ -324,6 +314,49 @@ func SetupRouter() *gin.Engine {
 		docker.GET("/images/db", handlers.GetDockerImages)                              // 获取数据库中的镜像记录
 		docker.GET("/images/db/:id", handlers.GetDockerImageByDBID)                     // 根据数据库ID获取镜像记录
 		docker.DELETE("/images/db/:id", handlers.DeleteDockerImageRecord)               // 删除镜像数据库记录
+	}
+
+	// ------------------------------ 会话管理接口 ------------------------------
+	sessionHandler := handlers.NewSessionHandler()
+	sessions := api.Group("/sessions")
+	{
+		sessions.GET("/:id", sessionHandler.GetSessionByID)                             // 获取会话基本信息
+		sessions.GET("/:id/details", sessionHandler.GetDetailedSessionInfo)             // 获取会话详细信息
+		sessions.GET("/:id/events", sessionHandler.GetSessionEvents)                    // 获取会话事件
+		sessions.POST("/:id/close", sessionHandler.CloseSession)                        // 关闭会话
+		sessions.GET("/ip/:ip", sessionHandler.GetSessionsByIP)                         // 根据IP获取会话
+		sessions.GET("/ip/:ip/active", sessionHandler.GetActiveSessionsByIP)            // 获取IP的活跃会话
+		sessions.GET("/container/:container_id", sessionHandler.GetSessionsByContainer) // 根据容器获取会话
+		sessions.GET("/statistics", sessionHandler.GetSessionStatistics)                // 获取会话统计
+		sessions.GET("/time-range", sessionHandler.GetSessionsInTimeRange)              // 根据时间范围获取会话
+		sessions.POST("/timeout", sessionHandler.TimeoutInactiveSessions)               // 处理超时会话
+		sessions.POST("/auth", sessionHandler.RecordAuthAttempt)                        // 记录认证尝试
+		sessions.POST("/command", sessionHandler.RecordCommand)                         // 记录命令执行
+	}
+
+	// ------------------------------ 容器日志分析接口 ------------------------------
+	containerLogHandler := handlers.NewContainerRuntimeLogHandler()
+	containerLogs := api.Group("/container-logs")
+	{
+		// 日志分析功能
+		containerLogs.GET("/segments", handlers.GetAllContainerLogSegments)                                // 获取所有日志分析结果
+		containerLogs.GET("/segments/:id", handlers.GetContainerLogSegmentByID)                            // 根据ID获取分析结果
+		containerLogs.GET("/segments/container/:container_id", handlers.GetLogSegmentsByContainerID)       // 根据容器ID获取分析结果
+		containerLogs.GET("/segments/type/:type", handlers.GetLogSegmentsByType)                           // 根据类型获取分析结果
+		containerLogs.DELETE("/segments/:id", handlers.DeleteContainerLogSegment)                          // 删除分析结果
+		containerLogs.DELETE("/segments/container/:container_id", handlers.DeleteLogSegmentsByContainerID) // 删除容器相关分析结果
+
+		// 容器运行时日志功能
+		containerLogs.POST("/parse", containerLogHandler.ParseContainerLogs)                     // 解析容器日志
+		containerLogs.GET("/container/:container_id", containerLogHandler.GetLogsByContainer)    // 根据容器获取日志
+		containerLogs.GET("/time-range", containerLogHandler.GetLogsByTimeRange)                 // 根据时间范围获取日志
+		containerLogs.GET("/event-type/:event_type", containerLogHandler.GetLogsByEventType)     // 根据事件类型获取日志
+		containerLogs.GET("/source-ip/:source_ip", containerLogHandler.GetLogsBySourceIP)        // 根据源IP获取日志
+		containerLogs.GET("/session/:session_id/summary", containerLogHandler.GetSessionSummary) // 获取会话汇总
+		containerLogs.POST("/session/summary", containerLogHandler.CreateSessionSummary)         // 创建会话汇总
+		containerLogs.GET("/statistics", containerLogHandler.GetLogStatistics)                   // 获取日志统计
+		containerLogs.GET("/analysis", containerLogHandler.GetAttackAnalysis)                    // 获取攻击分析
+		containerLogs.POST("/export", containerLogHandler.ExportLogs)                            // 导出日志
 	}
 
 	// 暂时禁用 Swagger 文档路由
