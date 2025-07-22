@@ -54,9 +54,9 @@ func main() {
 	handlers.CreateDefaultHoneyTokens()
 	fmt.Println("✅ 默认蜜签初始化完成")
 
-	fmt.Println("服务启动中，监听端口: 8081...")
+	fmt.Println("服务启动中，监听端口: 9090...")
 	// 启动服务
-	err := r.Run(":8081")
+	err := r.Run(":9090")
 	if err != nil {
 		fmt.Println("服务启动失败:", err)
 		return

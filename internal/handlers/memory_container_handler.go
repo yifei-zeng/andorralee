@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"andorralee/internal/config"
+	"andorralee/internal/services"
 	"andorralee/pkg/utils"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -48,7 +50,29 @@ var (
 	memoryInstances = make(map[uint]*MemoryContainerInstance)
 	instanceMutex   = sync.RWMutex{}
 	nextID          = uint(1)
+	deletedIDs      = make([]uint, 0) // 存储已删除的ID，用于重用
 )
+
+// getNextAvailableID 获取下一个可用的ID，优先重用已删除的ID
+func getNextAvailableID() uint {
+	// 如果有已删除的ID，优先重用最小的
+	if len(deletedIDs) > 0 {
+		// 排序以获取最小的ID
+		sort.Slice(deletedIDs, func(i, j int) bool {
+			return deletedIDs[i] < deletedIDs[j]
+		})
+
+		// 取出最小的ID
+		reusedID := deletedIDs[0]
+		deletedIDs = deletedIDs[1:]
+		return reusedID
+	}
+
+	// 没有可重用的ID，使用下一个新ID
+	currentID := nextID
+	nextID++
+	return currentID
+}
 
 // CreateMemoryContainerInstance 创建内存容器实例
 func CreateMemoryContainerInstance(c *gin.Context) {
@@ -215,8 +239,9 @@ func CreateMemoryContainerInstance(c *gin.Context) {
 
 	// 创建内存记录
 	instanceMutex.Lock()
+	availableID := getNextAvailableID()
 	instance := &MemoryContainerInstance{
-		ID:            nextID,
+		ID:            availableID,
 		Name:          req.Name,
 		HoneypotName:  req.HoneypotName,
 		ContainerName: containerName,
@@ -235,8 +260,7 @@ func CreateMemoryContainerInstance(c *gin.Context) {
 		UpdateTime:    time.Now(),
 		Description:   req.Description,
 	}
-	memoryInstances[nextID] = instance
-	nextID++
+	memoryInstances[availableID] = instance
 	instanceMutex.Unlock()
 
 	// 返回创建结果
@@ -315,6 +339,8 @@ func DeleteMemoryContainerInstance(c *gin.Context) {
 		return
 	}
 	delete(memoryInstances, uint(id))
+	// 将删除的ID添加到重用列表
+	deletedIDs = append(deletedIDs, uint(id))
 	instanceMutex.Unlock()
 
 	// 释放端口
@@ -344,4 +370,191 @@ func DeleteMemoryContainerInstance(c *gin.Context) {
 	}
 
 	utils.ResponseSuccess(c, "容器实例删除成功")
+}
+
+// GetContainerIDStatus 获取容器ID使用状态
+func GetContainerIDStatus(c *gin.Context) {
+	instanceMutex.RLock()
+	defer instanceMutex.RUnlock()
+
+	// 统计ID使用情况
+	usedIDs := make([]uint, 0)
+	for id := range memoryInstances {
+		usedIDs = append(usedIDs, id)
+	}
+
+	// 排序已使用的ID
+	sort.Slice(usedIDs, func(i, j int) bool {
+		return usedIDs[i] < usedIDs[j]
+	})
+
+	// 排序可重用的ID
+	availableIDs := make([]uint, len(deletedIDs))
+	copy(availableIDs, deletedIDs)
+	sort.Slice(availableIDs, func(i, j int) bool {
+		return availableIDs[i] < availableIDs[j]
+	})
+
+	result := map[string]interface{}{
+		"next_new_id":     nextID,
+		"used_ids":        usedIDs,
+		"available_ids":   availableIDs,
+		"total_instances": len(memoryInstances),
+		"reusable_count":  len(deletedIDs),
+	}
+
+	utils.ResponseSuccess(c, result)
+}
+
+// StartMemoryContainerInstance 启动内存容器实例
+func StartMemoryContainerInstance(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		utils.ResponseError(c, http.StatusBadRequest, "无效的ID: "+err.Error())
+		return
+	}
+
+	instanceMutex.RLock()
+	instance, exists := memoryInstances[uint(id)]
+	instanceMutex.RUnlock()
+
+	if !exists {
+		utils.ResponseError(c, http.StatusNotFound, "容器实例不存在")
+		return
+	}
+
+	// 启动Docker容器
+	ctx := context.Background()
+	err = config.DockerCli.ContainerStart(ctx, instance.ContainerID, container.StartOptions{})
+	if err != nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "启动容器失败: "+err.Error())
+		return
+	}
+
+	// 更新状态
+	instanceMutex.Lock()
+	instance.Status = "running"
+	instance.UpdateTime = time.Now()
+	instanceMutex.Unlock()
+
+	utils.ResponseSuccess(c, "容器启动成功")
+}
+
+// StopMemoryContainerInstance 停止内存容器实例
+func StopMemoryContainerInstance(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		utils.ResponseError(c, http.StatusBadRequest, "无效的ID: "+err.Error())
+		return
+	}
+
+	instanceMutex.RLock()
+	instance, exists := memoryInstances[uint(id)]
+	instanceMutex.RUnlock()
+
+	if !exists {
+		utils.ResponseError(c, http.StatusNotFound, "容器实例不存在")
+		return
+	}
+
+	// 停止Docker容器
+	ctx := context.Background()
+	timeout := 30 // 30秒超时
+	err = config.DockerCli.ContainerStop(ctx, instance.ContainerID, container.StopOptions{
+		Timeout: &timeout,
+	})
+	if err != nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "停止容器失败: "+err.Error())
+		return
+	}
+
+	// 更新状态
+	instanceMutex.Lock()
+	instance.Status = "stopped"
+	instance.UpdateTime = time.Now()
+	instanceMutex.Unlock()
+
+	utils.ResponseSuccess(c, "容器停止成功")
+}
+
+// RestartMemoryContainerInstance 重启内存容器实例
+func RestartMemoryContainerInstance(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		utils.ResponseError(c, http.StatusBadRequest, "无效的ID: "+err.Error())
+		return
+	}
+
+	instanceMutex.RLock()
+	instance, exists := memoryInstances[uint(id)]
+	instanceMutex.RUnlock()
+
+	if !exists {
+		utils.ResponseError(c, http.StatusNotFound, "容器实例不存在")
+		return
+	}
+
+	// 重启Docker容器
+	ctx := context.Background()
+	timeout := 30 // 30秒超时
+	err = config.DockerCli.ContainerRestart(ctx, instance.ContainerID, container.StopOptions{
+		Timeout: &timeout,
+	})
+	if err != nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "重启容器失败: "+err.Error())
+		return
+	}
+
+	// 更新状态
+	instanceMutex.Lock()
+	instance.Status = "running"
+	instance.UpdateTime = time.Now()
+	instanceMutex.Unlock()
+
+	utils.ResponseSuccess(c, "容器重启成功")
+}
+
+// SyncMemoryContainerStatus 同步内存容器状态
+func SyncMemoryContainerStatus(c *gin.Context) {
+	instanceMutex.Lock()
+	defer instanceMutex.Unlock()
+
+	ctx := context.Background()
+	syncCount := 0
+	errorCount := 0
+
+	for _, instance := range memoryInstances {
+		// 获取容器状态
+		containerJSON, err := config.DockerCli.ContainerInspect(ctx, instance.ContainerID)
+		if err != nil {
+			errorCount++
+			continue
+		}
+
+		// 更新状态
+		oldStatus := instance.Status
+		if containerJSON.State.Running {
+			instance.Status = "running"
+		} else if containerJSON.State.Dead {
+			instance.Status = "dead"
+		} else {
+			instance.Status = "stopped"
+		}
+
+		if oldStatus != instance.Status {
+			instance.UpdateTime = time.Now()
+			syncCount++
+		}
+	}
+
+	result := map[string]interface{}{
+		"synced_count": syncCount,
+		"error_count":  errorCount,
+		"total_count":  len(memoryInstances),
+	}
+
+	utils.ResponseSuccess(c, result)
 }
