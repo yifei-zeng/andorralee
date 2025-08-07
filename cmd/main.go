@@ -45,6 +45,10 @@ func main() {
 		fmt.Println("警告: 达梦数据库连接失败，相关功能将不可用")
 	} else {
 		fmt.Println("达梦数据库连接成功！")
+		// 初始化达梦数据库表
+		if err := config.InitDamengTables(); err != nil {
+			fmt.Println("警告: 达梦数据库表初始化失败，相关功能可能不可用:", err)
+		}
 	}
 
 	// 初始化路由

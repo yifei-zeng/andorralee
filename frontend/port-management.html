@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>端口管理工具</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #fafafa;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .success { background: #28a745; }
+        .danger { background: #dc3545; }
+        .warning { background: #ffc107; color: #212529; }
+        .info { background: #17a2b8; }
+        
+        input, select {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        label {
+            display: inline-block;
+            width: 120px;
+            font-weight: bold;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .port-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .port-item {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+        }
+        .port-available { border-left: 4px solid #28a745; }
+        .port-occupied { border-left: 4px solid #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 端口管理工具</h1>
+        
+        <div class="section">
+            <h3>📊 端口统计</h3>
+            <button onclick="getPortStatistics()" class="info">获取端口统计</button>
+            <button onclick="getAllocatedPorts()" class="warning">查看已分配端口</button>
+        </div>
+
+        <div class="section">
+            <h3>🔍 端口检查</h3>
+            <div class="form-group">
+                <label>端口号:</label>
+                <input type="number" id="checkPort" placeholder="输入端口号" min="1" max="65535">
+                <button onclick="checkPortAvailability()" class="info">检查可用性</button>
+            </div>
+            <div class="form-group">
+                <label>起始端口:</label>
+                <input type="number" id="startPort" placeholder="起始端口" value="8000" min="1" max="65535">
+                <button onclick="getNextAvailablePort()" class="success">获取下一个可用端口</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>⚡ 端口分配</h3>
+            <div class="form-group">
+                <label>容器ID:</label>
+                <input type="text" id="containerID" placeholder="输入容器ID">
+                <label>服务类型:</label>
+                <select id="serviceType">
+                    <option value="http">HTTP</option>
+                    <option value="ssh">SSH</option>
+                    <option value="mysql">MySQL</option>
+                    <option value="ftp">FTP</option>
+                    <option value="other">其他</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>描述:</label>
+                <input type="text" id="description" placeholder="端口用途描述">
+                <button onclick="allocatePort()" class="success">自动分配端口</button>
+            </div>
+            <div class="form-group">
+                <label>指定端口:</label>
+                <input type="number" id="specificPort" placeholder="指定端口号" min="1" max="65535">
+                <button onclick="allocateSpecificPort()" class="warning">分配指定端口</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🗑️ 端口释放</h3>
+            <div class="form-group">
+                <label>端口号:</label>
+                <input type="number" id="releasePort" placeholder="要释放的端口号" min="1" max="65535">
+                <button onclick="releasePort()" class="danger">释放端口</button>
+            </div>
+            <div class="form-group">
+                <label>容器ID:</label>
+                <input type="text" id="releaseContainerID" placeholder="容器ID">
+                <button onclick="releasePortsByContainer()" class="danger">释放容器所有端口</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>📋 可用端口查询</h3>
+            <div class="form-group">
+                <label>起始端口:</label>
+                <input type="number" id="rangeStart" placeholder="起始端口" value="8000" min="1" max="65535">
+                <label>结束端口:</label>
+                <input type="number" id="rangeEnd" placeholder="结束端口" value="9000" min="1" max="65535">
+                <label>限制数量:</label>
+                <input type="number" id="rangeLimit" placeholder="最大数量" value="50" min="1" max="1000">
+                <button onclick="getAvailablePorts()" class="info">查询可用端口</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>📊 结果显示</h3>
+            <div id="result" class="result">等待操作...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/v1';
+
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                };
+
+                if (data && method !== 'GET') {
+                    options.body = JSON.stringify(data);
+                }
+
+                const response = await fetch(API_BASE + endpoint, options);
+                const result = await response.json();
+                
+                displayResult(`${method} ${endpoint}:\n${JSON.stringify(result, null, 2)}`);
+                return result;
+            } catch (error) {
+                displayResult(`错误: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        function displayResult(text, type = 'info') {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = text;
+            resultDiv.className = `result ${type}`;
+        }
+
+        // 端口统计
+        async function getPortStatistics() {
+            await apiCall('/ports/statistics');
+        }
+
+        async function getAllocatedPorts() {
+            await apiCall('/ports/allocated');
+        }
+
+        // 端口检查
+        async function checkPortAvailability() {
+            const port = document.getElementById('checkPort').value;
+            if (!port) {
+                alert('请输入端口号');
+                return;
+            }
+            await apiCall(`/ports/${port}/check`);
+        }
+
+        async function getNextAvailablePort() {
+            const startPort = document.getElementById('startPort').value || '8000';
+            await apiCall(`/ports/next-available?start_port=${startPort}`);
+        }
+
+        // 端口分配
+        async function allocatePort() {
+            const containerID = document.getElementById('containerID').value;
+            const serviceType = document.getElementById('serviceType').value;
+            const description = document.getElementById('description').value;
+            
+            if (!containerID) {
+                alert('请输入容器ID');
+                return;
+            }
+            
+            const data = {
+                container_id: containerID,
+                service_type: serviceType,
+                description: description || '自动分配的端口'
+            };
+            
+            await apiCall('/ports/allocate', 'POST', data);
+        }
+
+        async function allocateSpecificPort() {
+            const port = document.getElementById('specificPort').value;
+            const containerID = document.getElementById('containerID').value;
+            const serviceType = document.getElementById('serviceType').value;
+            const description = document.getElementById('description').value;
+            
+            if (!port || !containerID) {
+                alert('请输入端口号和容器ID');
+                return;
+            }
+            
+            const data = {
+                port: parseInt(port),
+                container_id: containerID,
+                service_type: serviceType,
+                description: description || '指定分配的端口'
+            };
+            
+            await apiCall('/ports/allocate-specific', 'POST', data);
+        }
+
+        // 端口释放
+        async function releasePort() {
+            const port = document.getElementById('releasePort').value;
+            if (!port) {
+                alert('请输入端口号');
+                return;
+            }
+            
+            if (!confirm(`确定要释放端口 ${port} 吗？`)) {
+                return;
+            }
+            
+            await apiCall(`/ports/${port}/release`, 'DELETE');
+        }
+
+        async function releasePortsByContainer() {
+            const containerID = document.getElementById('releaseContainerID').value;
+            if (!containerID) {
+                alert('请输入容器ID');
+                return;
+            }
+            
+            if (!confirm(`确定要释放容器 ${containerID} 的所有端口吗？`)) {
+                return;
+            }
+            
+            await apiCall(`/ports/container/${containerID}/release`, 'DELETE');
+        }
+
+        // 可用端口查询
+        async function getAvailablePorts() {
+            const start = document.getElementById('rangeStart').value || '8000';
+            const end = document.getElementById('rangeEnd').value || '9000';
+            const limit = document.getElementById('rangeLimit').value || '50';
+            
+            const data = {
+                start: parseInt(start),
+                end: parseInt(end),
+                limit: parseInt(limit)
+            };
+            
+            await apiCall('/ports/available', 'POST', data);
+        }
+    </script>
+</body>
+</html>

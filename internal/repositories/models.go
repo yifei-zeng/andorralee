@@ -284,3 +284,152 @@ type CowrieCommandStatistics struct {
 func (CowrieLog) TableName() string {
 	return "cowrie_log"
 }
+
+// MalwareSignature 病毒特征模型
+type MalwareSignature struct {
+	ID          uint      `json:"id" gorm:"primaryKey"`
+	Name        string    `json:"name" gorm:"size:100;not null;comment:特征名称"`
+	Pattern     string    `json:"pattern" gorm:"type:text;not null;comment:特征模式"`
+	Type        string    `json:"type" gorm:"size:20;not null;comment:类型(hash/string/regex)"`
+	Severity    string    `json:"severity" gorm:"size:20;not null;comment:严重程度(low/medium/high/critical)"`
+	Description string    `json:"description" gorm:"type:text;comment:描述"`
+	CreateTime  time.Time `json:"create_time" gorm:"not null;comment:创建时间"`
+	UpdateTime  time.Time `json:"update_time" gorm:"comment:更新时间"`
+	IsActive    bool      `json:"is_active" gorm:"default:1;comment:是否激活"`
+}
+
+// ScanResult 扫描结果模型
+type ScanResult struct {
+	ID             uint      `json:"id" gorm:"primaryKey"`
+	FileHash       string    `json:"file_hash" gorm:"size:64;not null;index;comment:文件SHA256哈希"`
+	MD5Hash        string    `json:"md5_hash" gorm:"size:32;comment:文件MD5哈希"`
+	FileName       string    `json:"file_name" gorm:"size:255;not null;comment:文件名"`
+	FileSize       int64     `json:"file_size" gorm:"not null;comment:文件大小(字节)"`
+	ScanTime       time.Time `json:"scan_time" gorm:"not null;comment:扫描时间"`
+	IsInfected     bool      `json:"is_infected" gorm:"not null;comment:是否感染"`
+	ThreatLevel    string    `json:"threat_level" gorm:"size:20;comment:威胁等级"`
+	DetectionCount int       `json:"detection_count" gorm:"default:0;comment:检测到的威胁数量"`
+	ScanDuration   int64     `json:"scan_duration_ms" gorm:"comment:扫描耗时(毫秒)"`
+	SourceIP       string    `json:"source_ip" gorm:"size:45;comment:上传者IP"`
+	UserAgent      string    `json:"user_agent" gorm:"type:text;comment:用户代理"`
+}
+
+// DetectionResult 检测结果模型
+type DetectionResult struct {
+	ID            uint             `json:"id" gorm:"primaryKey"`
+	ScanResultID  uint             `json:"scan_result_id" gorm:"not null;comment:扫描结果ID"`
+	ScanResult    ScanResult       `json:"scan_result" gorm:"foreignKey:ScanResultID"`
+	SignatureID   uint             `json:"signature_id" gorm:"not null;comment:特征ID"`
+	Signature     MalwareSignature `json:"signature" gorm:"foreignKey:SignatureID"`
+	SignatureName string           `json:"signature_name" gorm:"size:100;comment:特征名称"`
+	MatchType     string           `json:"match_type" gorm:"size:20;comment:匹配类型"`
+	MatchContent  string           `json:"match_content" gorm:"type:text;comment:匹配内容"`
+	Severity      string           `json:"severity" gorm:"size:20;comment:严重程度"`
+	CreatedAt     time.Time        `json:"created_at" gorm:"not null;comment:创建时间"`
+}
+
+// AttackSession 攻击会话模型
+type AttackSession struct {
+	ID              uint       `json:"id" gorm:"primaryKey"`
+	SessionID       string     `json:"session_id" gorm:"size:36;not null;uniqueIndex;comment:会话唯一ID"`
+	SourceIP        string     `json:"source_ip" gorm:"size:45;not null;index;comment:攻击者IP"`
+	SourcePort      uint       `json:"source_port" gorm:"comment:攻击者端口"`
+	DestinationIP   string     `json:"destination_ip" gorm:"size:45;not null;comment:目标IP"`
+	DestinationPort uint       `json:"destination_port" gorm:"not null;comment:目标端口"`
+	Protocol        string     `json:"protocol" gorm:"size:20;not null;comment:协议类型"`
+	StartTime       time.Time  `json:"start_time" gorm:"not null;comment:会话开始时间"`
+	EndTime         *time.Time `json:"end_time" gorm:"comment:会话结束时间"`
+	Duration        int64      `json:"duration" gorm:"comment:会话持续时间(秒)"`
+	Status          string     `json:"status" gorm:"size:20;not null;default:active;comment:会话状态"`
+	AuthAttempts    int        `json:"auth_attempts" gorm:"default:0;comment:认证尝试次数"`
+	CommandCount    int        `json:"command_count" gorm:"default:0;comment:执行命令次数"`
+	ThreatLevel     string     `json:"threat_level" gorm:"size:20;comment:威胁等级"`
+	ContainerID     string     `json:"container_id" gorm:"size:64;comment:关联容器ID"`
+	ContainerName   string     `json:"container_name" gorm:"size:100;comment:容器名称"`
+	UserAgent       string     `json:"user_agent" gorm:"type:text;comment:用户代理"`
+	Fingerprint     string     `json:"fingerprint" gorm:"size:64;comment:客户端指纹"`
+}
+
+// AttackEvent 攻击事件模型
+type AttackEvent struct {
+	ID          uint          `json:"id" gorm:"primaryKey"`
+	SessionID   string        `json:"session_id" gorm:"size:36;not null;index;comment:关联会话ID"`
+	Session     AttackSession `json:"session" gorm:"foreignKey:SessionID;references:SessionID"`
+	EventType   string        `json:"event_type" gorm:"size:30;not null;comment:事件类型"`
+	EventTime   time.Time     `json:"event_time" gorm:"not null;comment:事件时间"`
+	SourceIP    string        `json:"source_ip" gorm:"size:45;not null;index;comment:攻击者IP"`
+	Protocol    string        `json:"protocol" gorm:"size:20;not null;comment:协议"`
+	Username    string        `json:"username" gorm:"size:255;comment:用户名"`
+	Password    string        `json:"password" gorm:"size:255;comment:密码"`
+	Command     string        `json:"command" gorm:"type:text;comment:执行的命令"`
+	Payload     string        `json:"payload" gorm:"type:text;comment:攻击载荷"`
+	Result      string        `json:"result" gorm:"type:text;comment:执行结果"`
+	ThreatLevel string        `json:"threat_level" gorm:"size:20;comment:威胁等级"`
+	IsBlocked   bool          `json:"is_blocked" gorm:"default:0;comment:是否被阻断"`
+	RawData     string        `json:"raw_data" gorm:"type:text;comment:原始数据"`
+}
+
+// ThreatIntelligence 威胁情报模型
+type ThreatIntelligence struct {
+	ID             uint      `json:"id" gorm:"primaryKey"`
+	IndicatorType  string    `json:"indicator_type" gorm:"size:20;not null;comment:指标类型(ip/domain/hash/url)"`
+	IndicatorValue string    `json:"indicator_value" gorm:"size:255;not null;index;comment:指标值"`
+	ThreatType     string    `json:"threat_type" gorm:"size:50;comment:威胁类型"`
+	Confidence     int       `json:"confidence" gorm:"comment:置信度(0-100)"`
+	Severity       string    `json:"severity" gorm:"size:20;comment:严重程度"`
+	Source         string    `json:"source" gorm:"size:100;comment:情报来源"`
+	Description    string    `json:"description" gorm:"type:text;comment:描述"`
+	FirstSeen      time.Time `json:"first_seen" gorm:"comment:首次发现时间"`
+	LastSeen       time.Time `json:"last_seen" gorm:"comment:最后发现时间"`
+	IsActive       bool      `json:"is_active" gorm:"default:1;comment:是否激活"`
+	Tags           string    `json:"tags" gorm:"type:json;comment:标签"`
+	CreatedAt      time.Time `json:"created_at" gorm:"not null;comment:创建时间"`
+	UpdatedAt      time.Time `json:"updated_at" gorm:"comment:更新时间"`
+}
+
+// HoneytokenEvent 蜜签事件模型
+type HoneytokenEvent struct {
+	ID           uint      `json:"id" gorm:"primaryKey"`
+	TokenID      string    `json:"token_id" gorm:"size:36;not null;index;comment:蜜签ID"`
+	TokenType    string    `json:"token_type" gorm:"size:50;not null;comment:蜜签类型"`
+	TokenName    string    `json:"token_name" gorm:"size:100;comment:蜜签名称"`
+	TriggerTime  time.Time `json:"trigger_time" gorm:"not null;comment:触发时间"`
+	SourceIP     string    `json:"source_ip" gorm:"size:45;not null;index;comment:触发者IP"`
+	UserAgent    string    `json:"user_agent" gorm:"type:text;comment:用户代理"`
+	RequestPath  string    `json:"request_path" gorm:"size:500;comment:请求路径"`
+	RequestData  string    `json:"request_data" gorm:"type:text;comment:请求数据"`
+	ResponseCode int       `json:"response_code" gorm:"comment:响应码"`
+	Location     string    `json:"location" gorm:"size:255;comment:蜜签位置"`
+	Description  string    `json:"description" gorm:"type:text;comment:描述"`
+	ThreatLevel  string    `json:"threat_level" gorm:"size:20;comment:威胁等级"`
+	IsProcessed  bool      `json:"is_processed" gorm:"default:0;comment:是否已处理"`
+}
+
+// TableName 设置表名
+func (MalwareSignature) TableName() string {
+	return "malware_signature"
+}
+
+func (ScanResult) TableName() string {
+	return "scan_result"
+}
+
+func (DetectionResult) TableName() string {
+	return "detection_result"
+}
+
+func (AttackSession) TableName() string {
+	return "attack_session"
+}
+
+func (AttackEvent) TableName() string {
+	return "attack_event"
+}
+
+func (ThreatIntelligence) TableName() string {
+	return "threat_intelligence"
+}
+
+func (HoneytokenEvent) TableName() string {
+	return "honeytoken_event"
+}

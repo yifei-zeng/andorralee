@@ -168,6 +168,13 @@ func InitTables() error {
 		&repositories.DockerContainer{},
 		&repositories.HeadlingAuthLog{},
 		&repositories.CowrieLog{},
+		&repositories.MalwareSignature{},
+		&repositories.ScanResult{},
+		&repositories.DetectionResult{},
+		&repositories.AttackSession{},
+		&repositories.AttackEvent{},
+		&repositories.ThreatIntelligence{},
+		&repositories.HoneytokenEvent{},
 	)
 
 	if err != nil {
@@ -176,5 +183,43 @@ func InitTables() error {
 	}
 
 	fmt.Println("MySQL数据库表初始化成功")
+	return nil
+}
+
+// InitDamengTables 初始化达梦数据库表
+func InitDamengTables() error {
+	if DamengDB == nil {
+		return fmt.Errorf("达梦数据库未初始化")
+	}
+
+	// 自动迁移数据库表结构
+	err := DamengDB.AutoMigrate(
+		&repositories.HoneypotTemplate{},
+		&repositories.HoneypotInstance{},
+		&repositories.HoneypotLog{},
+		&repositories.Bait{},
+		&repositories.SecurityRule{},
+		&repositories.RuleLog{},
+		&repositories.DockerImage{},
+		&repositories.DockerImageLog{},
+		&repositories.ContainerLogSegment{},
+		&repositories.DockerContainer{},
+		&repositories.HeadlingAuthLog{},
+		&repositories.CowrieLog{},
+		&repositories.MalwareSignature{},
+		&repositories.ScanResult{},
+		&repositories.DetectionResult{},
+		&repositories.AttackSession{},
+		&repositories.AttackEvent{},
+		&repositories.ThreatIntelligence{},
+		&repositories.HoneytokenEvent{},
+	)
+
+	if err != nil {
+		fmt.Println("达梦数据库表初始化失败: " + err.Error())
+		return err
+	}
+
+	fmt.Println("达梦数据库表初始化成功")
 	return nil
 }

@@ -13,6 +13,9 @@ import (
 // SetupRouter 初始化路由
 // 返回值 *gin.Engine 是 Gin 框架的核心引擎，用于处理 HTTP 请求
 func SetupRouter() *gin.Engine {
+	// 初始化恶意软件处理器
+	handlers.InitMalwareHandler()
+
 	// 1. 创建默认 Gin 引擎（包含日志和恢复中间件）
 	r := gin.Default()
 
@@ -287,23 +290,48 @@ func SetupRouter() *gin.Engine {
 		malware := api.Group("/malware")
 		{
 			// 文件扫描
-			malware.POST("/scan/file", handlers.ScanFile)   // 扫描上传文件
-			malware.POST("/scan/url", handlers.ScanURL)     // 扫描URL文件
-			malware.POST("/scan/batch", handlers.BatchScan) // 批量扫描文件
+			malware.POST("/scan/file", handlers.ScanFile)         // 扫描上传文件
+			malware.POST("/scan/url", handlers.ScanUrl)           // 扫描URL文件
+			malware.GET("/scan/history", handlers.GetScanHistory) // 获取扫描历史
 
 			// 扫描结果
-			malware.GET("/results/:hash", handlers.GetScanResult)       // 获取扫描结果
-			malware.GET("/statistics", handlers.GetDetectionStatistics) // 获取检测统计
+			malware.GET("/results/:hash", handlers.ScanFileByHash) // 获取扫描结果
+			malware.GET("/statistics", handlers.GetMalwareStats)   // 获取检测统计
 
 			// 病毒特征管理
 			signatures := malware.Group("/signatures")
 			{
-				signatures.GET("", handlers.GetSignatures)           // 获取特征列表
-				signatures.POST("", handlers.AddSignature)           // 添加特征
-				signatures.PUT("/:id", handlers.UpdateSignature)     // 更新特征
-				signatures.DELETE("/:id", handlers.DeleteSignature)  // 删除特征
-				signatures.POST("/:id/test", handlers.TestSignature) // 测试特征
+				signatures.GET("", handlers.GetMalwareSignatures) // 获取特征列表
+				signatures.POST("", handlers.AddMalwareSignature) // 添加特征
 			}
+		}
+
+		// ------------------------------ 威胁情报接口 ------------------------------
+		threat := api.Group("/threat")
+		{
+			// 威胁情报管理
+			threat.POST("/intelligence", handlers.SaveThreatIntelligence) // 保存威胁情报
+			threat.GET("/intelligence", handlers.GetThreatIntelligence)   // 查询威胁情报
+			threat.GET("/assessment", handlers.GetThreatAssessment)       // 获取威胁评估
+
+			// 攻击会话管理
+			sessions := threat.Group("/sessions")
+			{
+				sessions.POST("", handlers.StartAttackSession)             // 开始攻击会话
+				sessions.PUT("/:sessionId/end", handlers.EndAttackSession) // 结束攻击会话
+				sessions.GET("/:sessionId", handlers.GetAttackSession)     // 获取会话详情
+				sessions.POST("/events", handlers.AddAttackEvent)          // 添加攻击事件
+			}
+
+			// 统计信息
+			threat.GET("/statistics", handlers.GetThreatAssessment) // 获取威胁评估
+		}
+
+		// ------------------------------ 蜜签事件接口 ------------------------------
+		honeytoken := api.Group("/honeytoken")
+		{
+			honeytoken.POST("/events", handlers.SaveHoneytokenEvent) // 保存蜜签事件
+			honeytoken.GET("/events", handlers.GetHoneytokenEvents)  // 获取蜜签事件历史
 		}
 
 		// ------------------------------ 容器日志分析接口 ------------------------------
