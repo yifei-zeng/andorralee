@@ -5,6 +5,7 @@ import (
 	"andorralee/internal/repositories"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -52,22 +53,31 @@ type DamengService struct {
 
 // NewMySQLService 创建MySQL服务实例
 func NewMySQLService() DatabaseService {
-	return &MySQLService{db: config.MySQLDB}
+	return &MySQLService{db: config.GetDBByMode("mysql")}
 }
 
 // NewDamengService 创建达梦数据库服务实例
 func NewDamengService() DatabaseService {
-	return &DamengService{db: config.DamengDB}
+	return &DamengService{db: config.GetDBByMode("dameng")}
 }
 
 // GetDatabaseService 根据配置获取数据库服务
 func GetDatabaseService() DatabaseService {
-	// 优先使用MySQL，如果不可用则使用达梦
-	if config.MySQLDB != nil {
-		return NewMySQLService()
-	}
-	if config.DamengDB != nil {
-		return NewDamengService()
+	mode := config.GetDBMode()
+	if mode == "dameng" {
+		if config.GetDBByMode("dameng") != nil {
+			return NewDamengService()
+		}
+		if config.GetDBByMode("mysql") != nil {
+			return NewMySQLService()
+		}
+	} else { // default mysql
+		if config.GetDBByMode("mysql") != nil {
+			return NewMySQLService()
+		}
+		if config.GetDBByMode("dameng") != nil {
+			return NewDamengService()
+		}
 	}
 	return nil
 }
@@ -298,7 +308,19 @@ func (s *DamengService) GetMalwareSignatures() ([]repositories.MalwareSignature,
 		return nil, errors.New("达梦数据库未初始化")
 	}
 	var signatures []repositories.MalwareSignature
-	err := s.db.Where("is_active = ?", true).Find(&signatures).Error
+	// 达梦布尔兼容: 使用 1 表示 true
+	err := s.db.Where("is_active = ?", 1).Find(&signatures).Error
+	if err != nil && strings.Contains(err.Error(), "IS_ACTIVE") {
+		// 回退：不带条件，再内存过滤
+		var all []repositories.MalwareSignature
+		if e2 := s.db.Find(&all).Error; e2 == nil {
+			filtered := make([]repositories.MalwareSignature, 0, len(all))
+			for _, sig := range all {
+				if sig.IsActive { filtered = append(filtered, sig) }
+			}
+			return filtered, nil
+		}
+	}
 	return signatures, err
 }
 
@@ -398,8 +420,17 @@ func (s *DamengService) GetThreatIntelligence(indicatorType, indicatorValue stri
 	}
 	var threat repositories.ThreatIntelligence
 	err := s.db.Where("indicator_type = ? AND indicator_value = ? AND is_active = ?",
-		indicatorType, indicatorValue, true).First(&threat).Error
+		indicatorType, indicatorValue, 1).First(&threat).Error
 	if err != nil {
+		if strings.Contains(err.Error(), "IS_ACTIVE") {
+			// 回退全表过滤
+			var all []repositories.ThreatIntelligence
+			if e2 := s.db.Where("indicator_type = ? AND indicator_value = ?", indicatorType, indicatorValue).Find(&all).Error; e2 == nil {
+				for _, ti := range all {
+					if ti.IsActive { return &ti, nil }
+				}
+			}
+		}
 		return nil, err
 	}
 	return &threat, nil

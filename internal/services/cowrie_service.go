@@ -19,13 +19,11 @@ type CowrieService struct {
 
 // NewCowrieService 创建Cowrie服务
 func NewCowrieService() (*CowrieService, error) {
-	if config.MySQLDB == nil {
-		return nil, fmt.Errorf("MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		return nil, fmt.Errorf("数据库未初始化")
 	}
-
-	return &CowrieService{
-		Repo: repositories.NewMySQLCowrieLogRepo(config.MySQLDB),
-	}, nil
+	return &CowrieService{Repo: repositories.NewMySQLCowrieLogRepo(db)}, nil
 }
 
 // PullCowrieLogs 从容器中拉取Cowrie日志

@@ -49,6 +49,8 @@ func main() {
 		if err := config.InitDamengTables(); err != nil {
 			fmt.Println("警告: 达梦数据库表初始化失败，相关功能可能不可用:", err)
 		}
+		// 启动结构自检
+		config.InitSchemaSelfCheckAsync()
 	}
 
 	// 初始化路由

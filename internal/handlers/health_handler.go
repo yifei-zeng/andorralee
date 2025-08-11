@@ -94,72 +94,43 @@ func HealthCheck(c *gin.Context) {
 
 // getEnvironment 获取运行环境
 func getEnvironment() string {
-	if config.MySQLDB != nil || config.DamengDB != nil {
-		return "production"
+	// 如果任一数据库初始化则认为是生产/运行环境
+	if config.GetActiveDB() != nil {
+		return "production-" + config.GetDBMode()
 	}
 	return "development"
 }
 
 // checkMySQLHealth 检查MySQL数据库健康状态
 func checkMySQLHealth() ServiceInfo {
-	if config.MySQLDB == nil {
-		return ServiceInfo{
-			Status:  "unavailable",
-			Message: "MySQL数据库未初始化",
-		}
+	db := config.GetDBByMode("mysql")
+	if db == nil {
+		return ServiceInfo{Status: "unavailable", Message: "MySQL数据库未初始化"}
 	}
-
-	// 尝试ping数据库
-	sqlDB, err := config.MySQLDB.DB()
+	sqlDB, err := db.DB()
 	if err != nil {
-		return ServiceInfo{
-			Status:  "error",
-			Message: "无法获取MySQL数据库连接: " + err.Error(),
-		}
+		return ServiceInfo{Status: "error", Message: "无法获取MySQL数据库连接: " + err.Error()}
 	}
-
 	if err := sqlDB.Ping(); err != nil {
-		return ServiceInfo{
-			Status:  "error",
-			Message: "MySQL数据库连接失败: " + err.Error(),
-		}
+		return ServiceInfo{Status: "error", Message: "MySQL数据库连接失败: " + err.Error()}
 	}
-
-	return ServiceInfo{
-		Status:  "healthy",
-		Message: "MySQL数据库连接正常",
-	}
+	return ServiceInfo{Status: "healthy", Message: "MySQL数据库连接正常"}
 }
 
 // checkDamengHealth 检查达梦数据库健康状态
 func checkDamengHealth() ServiceInfo {
-	if config.DamengDB == nil {
-		return ServiceInfo{
-			Status:  "unavailable",
-			Message: "达梦数据库未初始化",
-		}
+	db := config.GetDBByMode("dameng")
+	if db == nil {
+		return ServiceInfo{Status: "unavailable", Message: "达梦数据库未初始化"}
 	}
-
-	// 尝试ping数据库
-	sqlDB, err := config.DamengDB.DB()
+	sqlDB, err := db.DB()
 	if err != nil {
-		return ServiceInfo{
-			Status:  "error",
-			Message: "无法获取达梦数据库连接: " + err.Error(),
-		}
+		return ServiceInfo{Status: "error", Message: "无法获取达梦数据库连接: " + err.Error()}
 	}
-
 	if err := sqlDB.Ping(); err != nil {
-		return ServiceInfo{
-			Status:  "error",
-			Message: "达梦数据库连接失败: " + err.Error(),
-		}
+		return ServiceInfo{Status: "error", Message: "达梦数据库连接失败: " + err.Error()}
 	}
-
-	return ServiceInfo{
-		Status:  "healthy",
-		Message: "达梦数据库连接正常",
-	}
+	return ServiceInfo{Status: "healthy", Message: "达梦数据库连接正常"}
 }
 
 // checkDockerHealth 检查Docker服务健康状态
@@ -246,8 +217,8 @@ func ReadinessCheck(c *gin.Context) {
 	services := make(map[string]bool)
 
 	// 检查数据库连接（至少一个数据库可用）
-	mysqlReady := config.MySQLDB != nil
-	damengReady := config.DamengDB != nil
+	mysqlReady := config.GetDBByMode("mysql") != nil
+	damengReady := config.GetDBByMode("dameng") != nil
 
 	services["mysql"] = mysqlReady
 	services["dameng"] = damengReady

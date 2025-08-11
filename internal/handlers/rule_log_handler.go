@@ -18,12 +18,13 @@ import (
 // @Success 200 {object} utils.Response
 // @Router /rules/logs [get]
 func GetAllRuleLogs(c *gin.Context) {
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLRuleLogRepo(config.MySQLDB)
+	repo := repositories.NewMySQLRuleLogRepo(db)
 	logs, err := repo.List()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取日志失败: "+err.Error())
@@ -49,12 +50,13 @@ func GetRuleLogByID(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLRuleLogRepo(config.MySQLDB)
+	repo := repositories.NewMySQLRuleLogRepo(db)
 	log, err := repo.GetByID(uint(id))
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取日志失败: "+err.Error())
@@ -80,12 +82,13 @@ func GetLogsByRuleID(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLRuleLogRepo(config.MySQLDB)
+	repo := repositories.NewMySQLRuleLogRepo(db)
 	logs, err := repo.GetByRuleID(uint(id))
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取日志失败: "+err.Error())

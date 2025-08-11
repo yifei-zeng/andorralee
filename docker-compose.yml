@@ -1,20 +1,15 @@
 version: '3.8'
 
 services:
-  # 应用服务
   andorralee:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: andorralee
     ports:
-      - "8081:8081"
-    volumes:
-      - ./dm_home:/app/dm_home
-    depends_on:
-      - mysql
-      - dameng
+      - "9090:9090"
     environment:
+      - DB_MODE=${DB_MODE:-mysql}
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
       - MYSQL_USER=root
@@ -25,41 +20,39 @@ services:
       - DAMENG_USER=SYSDBA
       - DAMENG_PASSWORD=Dm123456
       - DAMENG_DATABASE=DOCKER_OPS
-    restart: unless-stopped
-    # 使用host网络模式，以便能够访问宿主机的Docker守护进程
-    # 注意：这在Windows和macOS上可能不起作用，因为Docker在这些平台上运行在虚拟机中
-    # 在这种情况下，需要将宿主机的Docker套接字挂载到容器中
+    depends_on:
+      - mysql
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./dm_home:/app/dm_home
+    restart: unless-stopped
 
-  # MySQL数据库服务
   mysql:
     image: mysql:8.0
     container_name: andorralee-mysql
     ports:
-      - "3306:3306"
+      - "13306:3306"  # 映射为宿主 13306
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./scripts/create_tables.sql:/docker-entrypoint-initdb.d/create_tables.sql
+      - ./deployment/create_tables.sql:/docker-entrypoint-initdb.d/1_create_tables.sql:ro
     environment:
       - MYSQL_ROOT_PASSWORD=123456
       - MYSQL_DATABASE=andorralee
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
-  # 达梦数据库服务
+  # 达梦占位服务 (默认不启动). 实际测试使用本地已安装实例。
   dameng:
-    image: dm8_single:v8.1.2.128_ent_x86_64_redhat7_20200927
-    container_name: andorralee-dameng
-    ports:
-      - "5236:5236"
-    volumes:
-      - dameng_data:/opt/dmdbms/data
-    environment:
-      - DM_INIT_DB=DOCKER_OPS
-      - DM_USER=SYSDBA
-      - DM_PWD=Dm123456
-    restart: unless-stopped
+    image: alpine:3.19
+    container_name: andorralee-dameng-placeholder
+    command: ["/bin/sh", "-c", "sleep infinity"]
+    deploy:
+      replicas: 0
+    restart: "no"
 
 volumes:
   mysql_data:
-  dameng_data:

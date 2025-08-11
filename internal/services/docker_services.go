@@ -21,14 +21,11 @@ type DockerImageService struct {
 
 // NewDockerImageService 创建Docker镜像服务
 func NewDockerImageService() (*DockerImageService, error) {
-	if config.MySQLDB == nil {
-		return nil, fmt.Errorf("MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		return nil, fmt.Errorf("数据库未初始化")
 	}
-
-	return &DockerImageService{
-		Repo:    repositories.NewMySQLDockerImageRepo(config.MySQLDB),
-		LogRepo: repositories.NewMySQLDockerImageLogRepo(config.MySQLDB),
-	}, nil
+	return &DockerImageService{Repo: repositories.NewMySQLDockerImageRepo(db), LogRepo: repositories.NewMySQLDockerImageLogRepo(db)}, nil
 }
 
 // IsDockerAvailable 检查Docker客户端是否可用
@@ -172,7 +169,7 @@ func TagDockerImage(imageID, newRepo, newTag string) error {
 
 // SyncDockerImagesToDB 同步Docker镜像到数据库
 func SyncDockerImagesToDB(images []image.Summary) {
-	if config.MySQLDB == nil {
+	if config.GetActiveDB() == nil {
 		return
 	}
 
@@ -236,8 +233,8 @@ func logPullImageOperation(imageName, imageID, status, message string) {
 		time.Now().Format("2006-01-02 15:04:05"), imageName, imageID, status, message)
 
 	// 记录到数据库
-	if config.MySQLDB != nil {
-		logRepo := repositories.NewMySQLDockerImageLogRepo(config.MySQLDB)
+	if db := config.GetActiveDB(); db != nil {
+		logRepo := repositories.NewMySQLDockerImageLogRepo(db)
 		log := &repositories.DockerImageLog{
 			ImageID:   imageID,
 			ImageName: imageName,
@@ -259,8 +256,8 @@ func logImageOperation(imageID, operation, status, message string) {
 		time.Now().Format("2006-01-02 15:04:05"), operation, imageID, status, message)
 
 	// 记录到数据库
-	if config.MySQLDB != nil {
-		logRepo := repositories.NewMySQLDockerImageLogRepo(config.MySQLDB)
+	if db := config.GetActiveDB(); db != nil {
+		logRepo := repositories.NewMySQLDockerImageLogRepo(db)
 		log := &repositories.DockerImageLog{
 			ImageID:   imageID,
 			Operation: operation,

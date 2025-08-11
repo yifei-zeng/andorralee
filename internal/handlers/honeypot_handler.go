@@ -109,7 +109,12 @@ func (h *HoneypotHandler) GetHoneypotLogs(c *gin.Context) {
 	}
 
 	// 获取日志
-	repo := repositories.NewMySQLHoneypotLogRepo(config.MySQLDB)
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
+		return
+	}
+	repo := repositories.NewMySQLHoneypotLogRepo(db)
 	logs, err := repo.GetByInstanceID(uint(id))
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取日志失败: "+err.Error())

@@ -21,11 +21,11 @@ type HoneypotInstanceService struct {
 
 // NewHoneypotInstanceService 创建蜜罐实例服务
 func NewHoneypotInstanceService() (*HoneypotInstanceService, error) {
-	if config.MySQLDB == nil {
-		return nil, errors.New("MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		return nil, errors.New("数据库未初始化")
 	}
-
-	repo := repositories.NewMySQLHoneypotInstanceRepo(config.MySQLDB)
+	repo := repositories.NewMySQLHoneypotInstanceRepo(db) // 达梦沿用实现
 	return &HoneypotInstanceService{repo: repo}, nil
 }
 
@@ -194,6 +194,7 @@ func (s *HoneypotInstanceService) GetInstanceLogs(id uint) ([]repositories.Honey
 	}
 
 	// 获取日志
-	logRepo := repositories.NewMySQLHoneypotLogRepo(config.MySQLDB)
+	db := config.GetActiveDB()
+	logRepo := repositories.NewMySQLHoneypotLogRepo(db)
 	return logRepo.GetByInstanceID(instance.ID)
 }

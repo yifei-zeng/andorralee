@@ -18,12 +18,13 @@ import (
 // @Success 200 {object} utils.Response
 // @Router /container-logs/segments [get]
 func GetAllContainerLogSegments(c *gin.Context) {
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLContainerLogSegmentRepo(config.MySQLDB)
+	repo := repositories.NewMySQLContainerLogSegmentRepo(db)
 	segments, err := repo.List()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取日志分析结果失败: "+err.Error())
@@ -49,12 +50,13 @@ func GetContainerLogSegmentByID(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLContainerLogSegmentRepo(config.MySQLDB)
+	repo := repositories.NewMySQLContainerLogSegmentRepo(db)
 	segment, err := repo.GetByID(uint(id))
 	if err != nil {
 		utils.ResponseError(c, http.StatusNotFound, "日志分析结果不存在: "+err.Error())
@@ -79,12 +81,13 @@ func GetLogSegmentsByContainerID(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLContainerLogSegmentRepo(config.MySQLDB)
+	repo := repositories.NewMySQLContainerLogSegmentRepo(db)
 	segments, err := repo.GetByContainerID(containerID)
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取日志分析结果失败: "+err.Error())
@@ -109,12 +112,13 @@ func GetLogSegmentsByType(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLContainerLogSegmentRepo(config.MySQLDB)
+	repo := repositories.NewMySQLContainerLogSegmentRepo(db)
 	segments, err := repo.GetBySegmentType(segmentType)
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取日志分析结果失败: "+err.Error())
@@ -140,12 +144,13 @@ func DeleteContainerLogSegment(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLContainerLogSegmentRepo(config.MySQLDB)
+	repo := repositories.NewMySQLContainerLogSegmentRepo(db)
 	if err := repo.Delete(uint(id)); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "删除日志分析结果失败: "+err.Error())
 		return
@@ -169,12 +174,13 @@ func DeleteLogSegmentsByContainerID(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLContainerLogSegmentRepo(config.MySQLDB)
+	repo := repositories.NewMySQLContainerLogSegmentRepo(db)
 	if err := repo.DeleteByContainerID(containerID); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "删除日志分析结果失败: "+err.Error())
 		return

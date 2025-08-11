@@ -16,6 +16,7 @@ require github.com/google/uuid v1.6.0
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	gitee.com/chunanyong/dm v1.8.20 // indirect
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/bytedance/sonic v1.12.10 // indirect
 	github.com/bytedance/sonic/loader v0.2.3 // indirect

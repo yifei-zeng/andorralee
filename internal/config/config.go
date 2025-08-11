@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/docker/docker/client"
 	dameng "github.com/godoes/gorm-dameng"
@@ -21,7 +23,8 @@ var (
 
 // Config 应用配置
 type Config struct {
-	MySQL struct {
+	DBMode string // mysql | dameng
+	MySQL  struct {
 		Host     string
 		Port     string
 		User     string
@@ -40,6 +43,9 @@ type Config struct {
 // LoadConfig 从环境变量加载配置
 func LoadConfig() *Config {
 	config := &Config{}
+
+	// 数据库模式 (默认 mysql)
+	config.DBMode = strings.ToLower(getEnv("DB_MODE", "mysql"))
 
 	// MySQL配置
 	config.MySQL.Host = getEnv("MYSQL_HOST", "localhost")
@@ -121,13 +127,12 @@ func InitDameng() error {
 		"connectTimeout": "30000",
 	}
 
-	// 将端口号转换为整数
 	port, err := strconv.Atoi(config.Dameng.Port)
 	if err != nil {
 		return fmt.Errorf("无效的端口号: %v", err)
 	}
 
-	// 构建达梦数据库连接字符串
+	// 构建达梦数据库连接字符串 (dm://user:pwd@host:port)
 	dsn := dameng.BuildUrl(
 		config.Dameng.User,
 		config.Dameng.Password,
@@ -136,26 +141,25 @@ func InitDameng() error {
 		options,
 	)
 
-	// 使用 GORM 打开达梦数据库连接
 	db, err := gorm.Open(dameng.Open(dsn), &gorm.Config{})
 	if err != nil {
 		fmt.Println("达梦数据库连接失败: " + err.Error())
 		return err
 	}
-
 	DamengDB = db
-	// 不在这里打印连接成功消息，只在main.go中打印
 	return nil
 }
 
 // InitTables 初始化数据库表
 func InitTables() error {
-	if MySQLDB == nil {
-		return fmt.Errorf("MySQL数据库未初始化")
+	// 优先使用当前模式选择的数据库
+	active := GetActiveDB()
+	if active == nil {
+		return fmt.Errorf("数据库未初始化")
 	}
 
-	// 自动迁移数据库表结构
-	err := MySQLDB.AutoMigrate(
+	// 自动迁移数据库表结构（GORM 跨驱动相同调用）
+	err := active.AutoMigrate(
 		&repositories.HoneypotTemplate{},
 		&repositories.HoneypotInstance{},
 		&repositories.HoneypotLog{},
@@ -178,11 +182,10 @@ func InitTables() error {
 	)
 
 	if err != nil {
-		fmt.Println("MySQL数据库表初始化失败: " + err.Error())
+		fmt.Println("数据库表初始化失败: " + err.Error())
 		return err
 	}
-
-	fmt.Println("MySQL数据库表初始化成功")
+	fmt.Println("数据库表初始化成功")
 	return nil
 }
 
@@ -222,4 +225,90 @@ func InitDamengTables() error {
 
 	fmt.Println("达梦数据库表初始化成功")
 	return nil
+}
+
+// GetActiveDB 根据 DB_MODE 返回当前激活的 *gorm.DB
+func GetActiveDB() *gorm.DB {
+	mode := strings.ToLower(getEnv("DB_MODE", "mysql"))
+	if mode == "dameng" {
+		if DamengDB != nil {
+			return DamengDB
+		}
+		// 回退到 MySQL
+		return MySQLDB
+	}
+	// 默认 mysql
+	if MySQLDB != nil {
+		return MySQLDB
+	}
+	return DamengDB
+}
+
+// GetDBMode 返回当前数据库模式
+func GetDBMode() string {
+	return strings.ToLower(getEnv("DB_MODE", "mysql"))
+}
+
+// GetDBByMode 根据传入模式返回对应数据库连接(可能为nil)
+func GetDBByMode(mode string) *gorm.DB {
+	switch strings.ToLower(mode) {
+	case "mysql":
+		return MySQLDB
+	case "dameng":
+		return DamengDB
+	default:
+		return nil
+	}
+}
+
+// SchemaCheckResult 结构自检结果
+type SchemaCheckResult struct {
+	MissingTables []string
+	MissingColumns map[string][]string
+}
+
+// SelfCheckSchema 简单自检：检查关键表与列是否存在（达梦/ MySQL 通用）
+func SelfCheckSchema() SchemaCheckResult {
+	db := GetActiveDB()
+	result := SchemaCheckResult{MissingTables: []string{}, MissingColumns: map[string][]string{}}
+	if db == nil { return result }
+
+	// INFORMATION_SCHEMA 在不同数据库差异，这里采用 GORM Migrator 接口尝试
+	migrator := db.Migrator()
+	required := map[string][]string{
+		"malware_signature":      {"id","name","pattern","type","severity","is_active"},
+		"threat_intelligence":    {"id","indicator_type","indicator_value","severity","is_active"},
+	}
+	for tbl, cols := range required {
+		if !migrator.HasTable(tbl) {
+			result.MissingTables = append(result.MissingTables, tbl)
+			continue
+		}
+		missCols := []string{}
+		for _, c := range cols {
+			if !migrator.HasColumn(tbl, c) { missCols = append(missCols, c) }
+		}
+		if len(missCols) > 0 { result.MissingColumns[tbl] = missCols }
+	}
+	return result
+}
+
+// LogSchemaCheck 执行并输出结果
+func LogSchemaCheck() {
+	res := SelfCheckSchema()
+	if len(res.MissingTables)==0 && len(res.MissingColumns)==0 {
+		fmt.Println("[SchemaCheck] 所有关键表与列存在")
+		return
+	}
+	fmt.Println("[SchemaCheck] 检测到结构缺失:")
+	if len(res.MissingTables)>0 { fmt.Println("  缺失表:", strings.Join(res.MissingTables, ",")) }
+	for tbl, cols := range res.MissingColumns { fmt.Printf("  表 %s 缺失列: %s\n", tbl, strings.Join(cols, ",")) }
+}
+
+// 延迟执行自检：等待迁移完成
+func InitSchemaSelfCheckAsync() {
+	go func(){
+		time.Sleep(2 * time.Second)
+		LogSchemaCheck()
+	}()
 }

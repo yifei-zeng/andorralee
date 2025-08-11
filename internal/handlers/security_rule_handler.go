@@ -18,12 +18,14 @@ import (
 // @Success 200 {object} utils.Response
 // @Router /rules [get]
 func GetAllRules(c *gin.Context) {
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLSecurityRuleRepo(config.MySQLDB)
+	// 目前达梦与 MySQL 使用相同的仓库实现（基于 GORM）
+	repo := repositories.NewMySQLSecurityRuleRepo(db)
 	rules, err := repo.List()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取规则失败: "+err.Error())
@@ -49,12 +51,13 @@ func GetRuleByID(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLSecurityRuleRepo(config.MySQLDB)
+	repo := repositories.NewMySQLSecurityRuleRepo(db)
 	rule, err := repo.GetByID(uint(id))
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取规则失败: "+err.Error())
@@ -80,12 +83,13 @@ func CreateRule(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLSecurityRuleRepo(config.MySQLDB)
+	repo := repositories.NewMySQLSecurityRuleRepo(db)
 	if err := repo.Create(&rule); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建规则失败: "+err.Error())
 		return
@@ -120,12 +124,13 @@ func UpdateRule(c *gin.Context) {
 
 	rule.ID = uint(id)
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLSecurityRuleRepo(config.MySQLDB)
+	repo := repositories.NewMySQLSecurityRuleRepo(db)
 	if err := repo.Update(&rule); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "更新规则失败: "+err.Error())
 		return
@@ -150,12 +155,13 @@ func DeleteRule(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLSecurityRuleRepo(config.MySQLDB)
+	repo := repositories.NewMySQLSecurityRuleRepo(db)
 	if err := repo.Delete(uint(id)); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "删除规则失败: "+err.Error())
 		return
@@ -180,12 +186,13 @@ func EnableRule(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLSecurityRuleRepo(config.MySQLDB)
+	repo := repositories.NewMySQLSecurityRuleRepo(db)
 	if err := repo.UpdateStatus(uint(id), true); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "启用规则失败: "+err.Error())
 		return
@@ -216,12 +223,13 @@ func DisableRule(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLSecurityRuleRepo(config.MySQLDB)
+	repo := repositories.NewMySQLSecurityRuleRepo(db)
 	if err := repo.UpdateStatus(uint(id), false); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "禁用规则失败: "+err.Error())
 		return

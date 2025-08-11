@@ -295,7 +295,7 @@ type MalwareSignature struct {
 	Description string    `json:"description" gorm:"type:text;comment:描述"`
 	CreateTime  time.Time `json:"create_time" gorm:"not null;comment:创建时间"`
 	UpdateTime  time.Time `json:"update_time" gorm:"comment:更新时间"`
-	IsActive    bool      `json:"is_active" gorm:"default:1;comment:是否激活"`
+	IsActive    bool      `json:"is_active" gorm:"column:is_active;default:1;comment:是否激活"`
 }
 
 // ScanResult 扫描结果模型
@@ -381,7 +381,8 @@ type ThreatIntelligence struct {
 	Description    string    `json:"description" gorm:"type:text;comment:描述"`
 	FirstSeen      time.Time `json:"first_seen" gorm:"comment:首次发现时间"`
 	LastSeen       time.Time `json:"last_seen" gorm:"comment:最后发现时间"`
-	IsActive       bool      `json:"is_active" gorm:"default:1;comment:是否激活"`
+	IsActive       bool      `json:"is_active" gorm:"column:is_active;default:1;comment:是否激活"`
+
 	Tags           string    `json:"tags" gorm:"type:json;comment:标签"`
 	CreatedAt      time.Time `json:"created_at" gorm:"not null;comment:创建时间"`
 	UpdatedAt      time.Time `json:"updated_at" gorm:"comment:更新时间"`

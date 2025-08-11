@@ -30,12 +30,13 @@ func (h *BaitHandler) CreateBait(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLBaitRepo(config.MySQLDB)
+	repo := repositories.NewMySQLBaitRepo(db)
 	if err := repo.Create(&bait); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建诱饵失败: "+err.Error())
 		return
@@ -53,12 +54,13 @@ func (h *BaitHandler) GetBait(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLBaitRepo(config.MySQLDB)
+	repo := repositories.NewMySQLBaitRepo(db)
 	bait, err := repo.GetByID(uint(id))
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取诱饵失败: "+err.Error())
@@ -70,12 +72,13 @@ func (h *BaitHandler) GetBait(c *gin.Context) {
 
 // ListBaits 列出所有诱饵
 func (h *BaitHandler) ListBaits(c *gin.Context) {
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLBaitRepo(config.MySQLDB)
+	repo := repositories.NewMySQLBaitRepo(db)
 	baits, err := repo.List()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取诱饵失败: "+err.Error())
@@ -94,12 +97,13 @@ func (h *BaitHandler) DeleteBait(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLBaitRepo(config.MySQLDB)
+	repo := repositories.NewMySQLBaitRepo(db)
 	if err := repo.Delete(uint(id)); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "删除诱饵失败: "+err.Error())
 		return
@@ -117,12 +121,13 @@ func (h *BaitHandler) MonitorBait(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLBaitRepo(config.MySQLDB)
+	repo := repositories.NewMySQLBaitRepo(db)
 	bait, err := repo.GetByID(uint(id))
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取诱饵失败: "+err.Error())
@@ -146,12 +151,13 @@ func (h *BaitHandler) MonitorBait(c *gin.Context) {
 // @Success 200 {object} utils.Response
 // @Router /baits [get]
 func GetAllBaits(c *gin.Context) {
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLBaitRepo(config.MySQLDB)
+	repo := repositories.NewMySQLBaitRepo(db)
 	baits, err := repo.List()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取诱饵失败: "+err.Error())
@@ -177,12 +183,13 @@ func GetBaitByID(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLBaitRepo(config.MySQLDB)
+	repo := repositories.NewMySQLBaitRepo(db)
 	bait, err := repo.GetByID(uint(id))
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取诱饵失败: "+err.Error())
@@ -208,12 +215,13 @@ func CreateBait(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLBaitRepo(config.MySQLDB)
+	repo := repositories.NewMySQLBaitRepo(db)
 	if err := repo.Create(&bait); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建诱饵失败: "+err.Error())
 		return
@@ -248,12 +256,13 @@ func UpdateBait(c *gin.Context) {
 
 	bait.ID = uint(id)
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLBaitRepo(config.MySQLDB)
+	repo := repositories.NewMySQLBaitRepo(db)
 	if err := repo.Update(&bait); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "更新诱饵失败: "+err.Error())
 		return
@@ -278,12 +287,13 @@ func DeleteBait(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLBaitRepo(config.MySQLDB)
+	repo := repositories.NewMySQLBaitRepo(db)
 	if err := repo.Delete(uint(id)); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "删除诱饵失败: "+err.Error())
 		return
@@ -317,13 +327,14 @@ func DeployBait(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
 	// 获取诱饵信息
-	baitRepo := repositories.NewMySQLBaitRepo(config.MySQLDB)
+	baitRepo := repositories.NewMySQLBaitRepo(db)
 	bait, err := baitRepo.GetByID(uint(id))
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取诱饵失败: "+err.Error())
@@ -331,7 +342,7 @@ func DeployBait(c *gin.Context) {
 	}
 
 	// 获取实例信息
-	instanceRepo := repositories.NewMySQLHoneypotInstanceRepo(config.MySQLDB)
+	instanceRepo := repositories.NewMySQLHoneypotInstanceRepo(db)
 	instance, err := instanceRepo.GetByID(uint(instanceID))
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取实例失败: "+err.Error())

@@ -20,13 +20,11 @@ type HeadlingService struct {
 
 // NewHeadlingService 创建Headling服务
 func NewHeadlingService() (*HeadlingService, error) {
-	if config.MySQLDB == nil {
-		return nil, fmt.Errorf("MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		return nil, fmt.Errorf("数据库未初始化")
 	}
-
-	return &HeadlingService{
-		Repo: repositories.NewMySQLHeadlingAuthLogRepo(config.MySQLDB),
-	}, nil
+	return &HeadlingService{Repo: repositories.NewMySQLHeadlingAuthLogRepo(db)}, nil
 }
 
 // PullHeadlingLogs 从容器中拉取headling认证日志

@@ -18,12 +18,13 @@ import (
 // @Success 200 {object} utils.Response
 // @Router /docker/image-logs [get]
 func GetAllDockerImageLogs(c *gin.Context) {
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLDockerImageLogRepo(config.MySQLDB)
+	repo := repositories.NewMySQLDockerImageLogRepo(db)
 	logs, err := repo.List()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取镜像操作日志失败: "+err.Error())
@@ -49,12 +50,13 @@ func GetDockerImageLogByID(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLDockerImageLogRepo(config.MySQLDB)
+	repo := repositories.NewMySQLDockerImageLogRepo(db)
 	log, err := repo.GetByID(uint(id))
 	if err != nil {
 		utils.ResponseError(c, http.StatusNotFound, "镜像操作日志不存在: "+err.Error())
@@ -79,12 +81,13 @@ func GetDockerImageLogsByImageID(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLDockerImageLogRepo(config.MySQLDB)
+	repo := repositories.NewMySQLDockerImageLogRepo(db)
 	logs, err := repo.GetByImageID(imageID)
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取镜像操作日志失败: "+err.Error())
@@ -110,12 +113,13 @@ func DeleteDockerImageLog(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLDockerImageLogRepo(config.MySQLDB)
+	repo := repositories.NewMySQLDockerImageLogRepo(db)
 	if err := repo.Delete(uint(id)); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "删除镜像操作日志失败: "+err.Error())
 		return
@@ -132,12 +136,13 @@ func DeleteDockerImageLog(c *gin.Context) {
 // @Success 200 {object} utils.Response
 // @Router /docker/images/db [get]
 func GetDockerImages(c *gin.Context) {
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLDockerImageRepo(config.MySQLDB)
+	repo := repositories.NewMySQLDockerImageRepo(db)
 	images, err := repo.List()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取镜像记录失败: "+err.Error())
@@ -163,12 +168,13 @@ func GetDockerImageByDBID(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLDockerImageRepo(config.MySQLDB)
+	repo := repositories.NewMySQLDockerImageRepo(db)
 	image, err := repo.GetByID(uint(id))
 	if err != nil {
 		utils.ResponseError(c, http.StatusNotFound, "镜像记录不存在: "+err.Error())
@@ -194,12 +200,13 @@ func DeleteDockerImageRecord(c *gin.Context) {
 		return
 	}
 
-	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+	db := config.GetActiveDB()
+	if db == nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
-	repo := repositories.NewMySQLDockerImageRepo(config.MySQLDB)
+	repo := repositories.NewMySQLDockerImageRepo(db)
 	if err := repo.Delete(uint(id)); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "删除镜像记录失败: "+err.Error())
 		return
