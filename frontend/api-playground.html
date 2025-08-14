@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Andorralee API Playground</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;background:#f6f7f9;color:#333}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    h1{margin:8px 0 12px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:12px}
+    .row{display:flex;gap:8px;align-items:center;margin:6px 0}
+    label{min-width:110px;font-size:12px;color:#555}
+    input,select,textarea{flex:1;padding:6px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:12px}
+    button{background:#2563eb;border:none;color:#fff;padding:6px 10px;border-radius:4px;cursor:pointer}
+    button.secondary{background:#10b981}
+    button.warn{background:#f59e0b}
+    .result{white-space:pre-wrap;background:#0b1021;color:#d1d5db;font-family:Consolas,monospace;font-size:12px;padding:8px;border-radius:4px;min-height:160px}
+    small{color:#6b7280}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Andorralee API Playground</h1>
+    <p>Base URL: <code>/api/v1</code></p>
+
+    <div class="grid">
+      <div class="card">
+        <h3>🦠 恶意软件检测</h3>
+        <div class="row"><label>上传文件</label><input type="file" id="fileInp" /></div>
+        <div class="row"><button onclick="scanFile()">POST /malware/scan/file</button></div>
+        <div class="row"><label>文件URL</label><input id="fileUrl" placeholder="https://..." /></div>
+        <div class="row"><button onclick="scanUrl()">POST /malware/scan/url</button></div>
+        <div class="row"><button class="secondary" onclick="getSignatures()">GET /malware/signatures</button><button class="secondary" onclick="getScanHistory()">GET /malware/scan/history</button></div>
+        <div class="row"><button class="secondary" onclick="getMalwareStats()">GET /malware/statistics</button></div>
+      </div>
+
+      <div class="card">
+        <h3>🛰️ 威胁情报与会话</h3>
+        <div class="row"><label>IOC 类型</label><select id="iocType"><option>ip</option><option>domain</option><option>hash</option><option>url</option></select></div>
+        <div class="row"><label>IOC 值</label><input id="iocValue" placeholder="1.2.3.4 或 example.com" /></div>
+        <div class="row"><button onclick="getThreat()">GET /threat/intelligence</button></div>
+        <hr/>
+        <div class="row"><label>会话源IP</label><input id="sessIP" placeholder="1.2.3.4" /></div>
+        <div class="row"><button onclick="startSession()">POST /threat/sessions</button><button class="warn" onclick="endSession()">PUT /threat/sessions/{id}/end</button></div>
+        <div class="row"><label>会话ID</label><input id="sessID" placeholder="自动填充" /></div>
+        <div class="row"><button onclick="getSession()">GET /threat/sessions/{id}</button></div>
+      </div>
+
+      <div class="card">
+        <h3>🍯 蜜签 (HoneyTokens)</h3>
+        <div class="row"><label>名称</label><input id="htName" placeholder="管理员凭证" /></div>
+        <div class="row"><label>类型</label><select id="htType"><option>credential</option><option>file</option><option>url</option><option>email</option></select></div>
+        <div class="row"><label>内容</label><input id="htContent" placeholder="admin:123456" /></div>
+        <div class="row"><button onclick="createHoneyToken()">POST /honeytokens</button><button class="secondary" onclick="getHoneyTokens()">GET /honeytokens</button></div>
+        <div class="row"><label>Token ID</label><input id="htId" placeholder="1" /></div>
+        <div class="row"><button onclick="triggerHoneyToken()">POST /honeytokens/{id}/trigger</button><button class="secondary" onclick="getHoneyTokenTriggers()">GET /honeytokens/triggers</button></div>
+      </div>
+
+      <div class="card">
+        <h3>🐳 Docker 与容器</h3>
+        <div class="row"><label>镜像</label><input id="imgName" placeholder="nginx:latest"/></div>
+        <div class="row"><button onclick="dockerPull()">POST /docker/pull</button><button class="secondary" onclick="listImages()">GET /docker/images</button></div>
+        <hr/>
+        <div class="row"><label>容器镜像</label><input id="cImage" placeholder="hello-world:latest"/></div>
+        <div class="row"><label>协议</label><select id="cProto"><option>http</option><option>ssh</option><option>mysql</option></select></div>
+        <div class="row"><button onclick="createTempContainer()">POST /temp-containers</button><button class="secondary" onclick="listTempContainers()">GET /temp-containers</button></div>
+      </div>
+    </div>
+
+    <h3>响应</h3>
+    <div id="out" class="result">等待操作...</div>
+  </div>
+
+  <script>
+    const API='/api/v1';
+    function show(obj){document.getElementById('out').textContent=typeof obj==='string'?obj:JSON.stringify(obj,null,2)}
+    async function req(path,method='GET',data,headers){
+      const opt={method,headers:headers||{'Content-Type':'application/json'}};
+      if(data&&(method!=='GET'))opt.body=JSON.stringify(data);
+      const r=await fetch(API+path,opt);return r.json();
+    }
+
+    // Malware
+    async function scanFile(){
+      const f=document.getElementById('fileInp').files[0];if(!f){show('请选择文件');return}
+      const fd=new FormData();fd.append('file',f);
+      const r=await fetch(API+'/malware/scan/file',{method:'POST',body:fd});show(await r.json());
+    }
+    async function scanUrl(){const url=document.getElementById('fileUrl').value;if(!url){show('请输入URL');return}show(await req('/malware/scan/url','POST',{url}))}
+    async function getSignatures(){show(await req('/malware/signatures'))}
+    async function getScanHistory(){show(await req('/malware/scan/history?limit=50'))}
+    async function getMalwareStats(){show(await req('/malware/statistics'))}
+
+    // Threat & sessions
+    async function getThreat(){const t=document.getElementById('iocType').value;const v=document.getElementById('iocValue').value;if(!t||!v){show('请输入IOC');return}show(await req('/threat/intelligence?type='+encodeURIComponent(t)+'&value='+encodeURIComponent(v)))}
+    async function startSession(){const ip=document.getElementById('sessIP').value;const r=await req('/threat/sessions','POST',{source_ip:ip});show(r);if(r&&r.data&&r.data.session_id){document.getElementById('sessID').value=r.data.session_id}}
+    async function endSession(){const id=document.getElementById('sessID').value;if(!id){show('请输入会话ID');return}show(await req('/threat/sessions/'+encodeURIComponent(id)+'/end','PUT',{}))}
+    async function getSession(){const id=document.getElementById('sessID').value;show(await req('/threat/sessions/'+encodeURIComponent(id)))}
+
+    // HoneyTokens
+    async function createHoneyToken(){const n=document.getElementById('htName').value;const t=document.getElementById('htType').value;const c=document.getElementById('htContent').value;show(await req('/honeytokens','POST',{name:n,type:t,content:c}))}
+    async function getHoneyTokens(){show(await req('/honeytokens'))}
+    async function triggerHoneyToken(){const id=document.getElementById('htId').value;show(await req('/honeytokens/'+encodeURIComponent(id)+'/trigger','POST',{action:'open',details:'clicked link'}))}
+    async function getHoneyTokenTriggers(){show(await req('/honeytokens/triggers'))}
+
+    // Docker & temp containers
+    async function dockerPull(){const img=document.getElementById('imgName').value;show(await req('/docker/pull','POST',{image_name:img}))}
+    async function listImages(){show(await req('/docker/images'))}
+    async function createTempContainer(){const img=document.getElementById('cImage').value;const proto=document.getElementById('cProto').value;const data={name:'api-demo',honeypot_name:'api-demo',image_name:img,protocol:proto,interface_type:'network',port_mappings:{"80":"auto"},environment:{"TEST":"true"}};show(await req('/temp-containers','POST',data))}
+    async function listTempContainers(){show(await req('/temp-containers'))}
+  </script>
+</body>
+</html>

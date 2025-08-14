@@ -381,7 +381,8 @@
         }
 
         async function checkDockerStatus() {
-            await apiCall('/docker/status');
+            // 对齐后端实际健康检查端点
+            await apiCall('/health');
         }
 
         async function getContainerIDStatus() {
@@ -409,7 +410,8 @@
                 alert('请输入镜像名称');
                 return;
             }
-            await apiCall('/docker/images/pull', 'POST', { image_name: imageName });
+            // 调整为 /docker/pull
+            await apiCall('/docker/pull', 'POST', { image_name: imageName });
         }
 
         async function getDockerImages() {
@@ -598,12 +600,8 @@
         }
 
         async function analyzeContainerLogs() {
-            const containerID = document.getElementById('logContainerID').value;
-            if (!containerID) {
-                alert('请输入容器ID');
-                return;
-            }
-            await apiCall('/ai/semantic-segment', 'POST', { container_id: containerID });
+            // 使用内置日志统计接口替代已移除的 AI 端点
+            await apiCall('/container-logs/statistics');
         }
 
         async function getSessionStatistics() {
