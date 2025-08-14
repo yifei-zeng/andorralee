@@ -381,7 +381,6 @@
         }
 
         async function checkDockerStatus() {
-            // 对齐后端实际健康检查端点
             await apiCall('/health');
         }
 
@@ -410,7 +409,6 @@
                 alert('请输入镜像名称');
                 return;
             }
-            // 调整为 /docker/pull
             await apiCall('/docker/pull', 'POST', { image_name: imageName });
         }
 
@@ -600,8 +598,7 @@
         }
 
         async function analyzeContainerLogs() {
-            // 使用内置日志统计接口替代已移除的 AI 端点
-            await apiCall('/container-logs/statistics');
+            await apiCall('/container-logs/analysis');
         }
 
         async function getSessionStatistics() {
@@ -618,7 +615,7 @@
                 alert('请输入会话ID');
                 return;
             }
-            await apiCall(`/sessions/${sessionID}/details`);
+            await apiCall(`/sessions/${sessionID}`);
         }
 
         async function closeSession() {
@@ -692,8 +689,67 @@
         }
 
         // 页面加载时自动获取数据
+        function renderScanSummary(result) {
+            try {
+                const s = result.summary || {};
+                if (!s || !('file_name' in s)) return;
+                const lines = [
+                    `🦠 扫描结果摘要:` ,
+                    `ID: ${s.id ?? '-'} | 文件: ${s.file_name} | 大小: ${s.file_size} bytes`,
+                    `感染: ${s.is_infected} | 等级: ${s.threat_level} | 威胁数: ${s.threat_count}`,
+                    `时间: ${s.scan_time} | 耗时: ${s.scan_duration_ms}ms`,
+                    `SHA256: ${s.sha256}`,
+                    `MD5: ${s.md5}`,
+                    `来源IP: ${s.source_ip}`
+                ];
+                displayResult(lines.join('\n'), 'success');
+            } catch {}
+        }
+
+        async function saveThreatIntel() {
+            const payload = {
+                indicator_type: 'ip',
+                indicator_value: '1.2.3.4',
+                threat_type: 'scanner',
+                severity: 'medium',
+                confidence: 60,
+                is_active: true
+            };
+            await apiCall('/threat/intelligence', 'POST', payload);
+        }
+
+        async function queryThreatIntel() {
+            await apiCall('/threat/intelligence?type=ip&value=1.2.3.4');
+        }
+
+        async function startAttackSession() {
+            const payload = { source_ip: '8.8.8.8', protocol: 'ssh' };
+            const r = await apiCall('/threat/sessions', 'POST', payload);
+            if (r && r.data && r.data.session_id) {
+                document.getElementById('sessionID').value = r.data.session_id;
+            }
+        }
+
+        async function addAttackEvent() {
+            const sid = document.getElementById('sessionID').value;
+            if (!sid) { alert('请先开始会话'); return; }
+            const payload = { session_id: sid, event_type: 'command', command: 'whoami' };
+            await apiCall('/threat/sessions/events', 'POST', payload);
+        }
+
         window.onload = function() {
             getAllContainers();
             getDockerImages();
+            const logGroups = document.querySelectorAll('.log-section .form-group');
+            if (logGroups && logGroups.length) {
+                const extra = document.createElement('div');
+                extra.className = 'form-group';
+                const btn1 = document.createElement('button'); btn1.textContent = '开始会话'; btn1.onclick = startAttackSession;
+                const btn2 = document.createElement('button'); btn2.textContent = '添加事件'; btn2.onclick = addAttackEvent;
+                const btn3 = document.createElement('button'); btn3.textContent = '保存情报'; btn3.onclick = saveThreatIntel;
+                const btn4 = document.createElement('button'); btn4.textContent = '查询情报'; btn4.onclick = queryThreatIntel;
+                extra.append(btn1, btn2, btn3, btn4);
+                logGroups[logGroups.length - 1].parentElement.appendChild(extra);
+            }
         };
     </script>
