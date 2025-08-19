@@ -312,6 +312,9 @@ type ScanResult struct {
 	ScanDuration   int64     `json:"scan_duration_ms" gorm:"comment:扫描耗时(毫秒)"`
 	SourceIP       string    `json:"source_ip" gorm:"size:45;comment:上传者IP"`
 	UserAgent      string    `json:"user_agent" gorm:"type:text;comment:用户代理"`
+	// 新增字段：上传存储路径与状态（uploaded/scanning/clean/infected/failed）
+	FilePath string `json:"file_path" gorm:"size:500;comment:服务器端文件保存路径"`
+	Status   string `json:"status" gorm:"size:20;default:uploaded;comment:扫描状态(uploaded/scanning/clean/infected/failed)"`
 }
 
 // DetectionResult 检测结果模型

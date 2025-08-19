@@ -19,6 +19,9 @@ type DatabaseService interface {
 	SaveDetectionResult(detection *repositories.DetectionResult) error
 	GetScanResult(fileHash string) (*repositories.ScanResult, error)
 	GetScanHistory(limit int) ([]repositories.ScanResult, error)
+	// 新增：按ID获取与更新扫描结果
+	GetScanByID(id uint) (*repositories.ScanResult, error)
+	UpdateScanResult(id uint, updates map[string]interface{}) error
 
 	// 攻击会话相关
 	SaveAttackSession(session *repositories.AttackSession) error
@@ -127,6 +130,25 @@ func (s *MySQLService) GetScanHistory(limit int) ([]repositories.ScanResult, err
 	var results []repositories.ScanResult
 	err := s.db.Order("scan_time DESC").Limit(limit).Find(&results).Error
 	return results, err
+}
+
+func (s *MySQLService) GetScanByID(id uint) (*repositories.ScanResult, error) {
+	if s.db == nil {
+		return nil, errors.New("MySQL数据库未初始化")
+	}
+	var result repositories.ScanResult
+	err := s.db.First(&result, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (s *MySQLService) UpdateScanResult(id uint, updates map[string]interface{}) error {
+	if s.db == nil {
+		return errors.New("MySQL数据库未初始化")
+	}
+	return s.db.Model(&repositories.ScanResult{}).Where("id = ?", id).Updates(updates).Error
 }
 
 func (s *MySQLService) SaveAttackSession(session *repositories.AttackSession) error {
@@ -337,6 +359,25 @@ func (s *DamengService) GetScanHistory(limit int) ([]repositories.ScanResult, er
 	var results []repositories.ScanResult
 	err := s.db.Order("scan_time DESC").Limit(limit).Find(&results).Error
 	return results, err
+}
+
+func (s *DamengService) GetScanByID(id uint) (*repositories.ScanResult, error) {
+	if s.db == nil {
+		return nil, errors.New("达梦数据库未初始化")
+	}
+	var result repositories.ScanResult
+	err := s.db.First(&result, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (s *DamengService) UpdateScanResult(id uint, updates map[string]interface{}) error {
+	if s.db == nil {
+		return errors.New("达梦数据库未初始化")
+	}
+	return s.db.Model(&repositories.ScanResult{}).Where("id = ?", id).Updates(updates).Error
 }
 
 func (s *DamengService) SaveAttackSession(session *repositories.AttackSession) error {

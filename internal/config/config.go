@@ -100,7 +100,7 @@ func InitMySQL() error {
 		config.MySQL.Database,
 	)
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{DisableForeignKeyConstraintWhenMigrating: true})
 	if err != nil {
 		fmt.Println("MySQL 连接失败: " + err.Error())
 		return err
@@ -137,7 +137,7 @@ func InitDameng() error {
 	)
 
 	// 使用 GORM 打开达梦数据库连接
-	db, err := gorm.Open(dameng.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(dameng.Open(dsn), &gorm.Config{DisableForeignKeyConstraintWhenMigrating: true})
 	if err != nil {
 		fmt.Println("达梦数据库连接失败: " + err.Error())
 		return err
@@ -155,6 +155,7 @@ func InitTables() error {
 	}
 
 	// 自动迁移数据库表结构
+	// 注意外键依赖顺序，例如 attack_session 依赖 attack_event(session_id) 的外键，需先迁移被引用表
 	err := MySQLDB.AutoMigrate(
 		&repositories.HoneypotTemplate{},
 		&repositories.HoneypotInstance{},
@@ -169,10 +170,11 @@ func InitTables() error {
 		&repositories.HeadlingAuthLog{},
 		&repositories.CowrieLog{},
 		&repositories.MalwareSignature{},
+		// 先迁移攻击事件，再迁移会话，避免外键顺序问题
+		&repositories.AttackEvent{},
+		&repositories.AttackSession{},
 		&repositories.ScanResult{},
 		&repositories.DetectionResult{},
-		&repositories.AttackSession{},
-		&repositories.AttackEvent{},
 		&repositories.ThreatIntelligence{},
 		&repositories.HoneytokenEvent{},
 	)

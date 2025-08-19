@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Andorralee 本地测试台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#121831; --muted:#7b89b6; --text:#e6ecff; --brand:#6aa6ff; --ok:#1bcfb4; --warn:#ffd56a; --bad:#ff7a7a;
+      --border: rgba(255,255,255,0.08);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--text);background:radial-gradient(1200px 800px at 10% -10%,#1a2455 0%,#0b1020 40%,#0b1020 100%);}    
+    a{color:var(--brand);text-decoration:none}
+    .container{max-width:1080px;margin:0 auto;padding:24px}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+    .title{display:flex;gap:12px;align-items:center}
+    .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#79F1A4,#0E5CAD);box-shadow:0 10px 30px rgba(106,166,255,.35)}
+    h1{font-size:18px;margin:0}
+    .sub{font-size:12px;color:var(--muted)}
+
+    .grid{display:grid;grid-template-columns:1.15fr .85fr;gap:18px}
+    @media (max-width: 980px){.grid{grid-template-columns:1fr;}}
+
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.05)}
+    .card h2{margin:0;padding:14px 16px;border-bottom:1px solid var(--border);font-size:15px}
+    .card .content{padding:16px}
+
+    .uploader{border:1px dashed rgba(255,255,255,.25);border-radius:12px;min-height:160px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(0,0,0,.06));cursor:pointer}
+    .uploader.drag{border-color:var(--brand);background:linear-gradient(180deg,rgba(106,166,255,.12),rgba(0,0,0,.06))}
+    .uploader small{color:var(--muted)}
+
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    button{background:#1b2551;color:#e6ecff;border:1px solid var(--border);padding:10px 14px;border-radius:10px;cursor:pointer}
+    button.primary{background:linear-gradient(135deg,#6aa6ff,#3b82f6);box-shadow:0 6px 18px rgba(59,130,246,.35)}
+    button.ghost{background:transparent}
+    button:disabled{opacity:.55;cursor:not-allowed}
+
+    .table{width:100%;border-collapse:collapse}
+    .table th,.table td{padding:10px 8px;border-bottom:1px solid var(--border);font-size:13px;text-align:left;vertical-align:top}
+    .table th{color:#b9c6ff;font-weight:600}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px}
+    .b-ok{background:rgba(27,207,180,.15);color:var(--ok)}
+    .b-bad{background:rgba(255,122,122,.15);color:var(--bad)}
+    .b-warn{background:rgba(255,213,106,.15);color:var(--warn)}
+
+    .muted{color:var(--muted)}
+    .row{display:flex;gap:10px;align-items:center}
+    .right{justify-content:flex-end}
+    .note{font-size:12px;color:var(--muted)}
+    .footer{margin-top:22px;color:var(--muted);font-size:12px}
+    .hl{color:#9ec5ff}
+
+    .filelist{margin-top:10px}
+    .fileitem{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid var(--border);border-radius:10px;margin:6px 0;background:rgba(255,255,255,.02)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title">
+        <div class="logo"></div>
+        <div>
+          <h1>Andorralee 本地测试台</h1>
+          <div class="sub">文件上传与扫描 · 运行在 <span class="hl">http://localhost:9090</span></div>
+        </div>
+      </div>
+      <div class="row muted">API 前缀：/api/v1</div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <h2>文件上传与扫描</h2>
+        <div class="content">
+          <div id="dropzone" class="uploader">
+            <div>拖拽文件到此处</div>
+            <small>或点击选择文件</small>
+            <input id="fileInput" type="file" multiple hidden />
+          </div>
+          <div class="btns">
+            <button id="btnChoose" class="ghost">选择文件</button>
+            <button id="btnUpload" class="primary">上传文件</button>
+            <button id="btnScan" class="">开始扫描</button>
+            <button id="btnClear" class="">清空上传文件</button>
+          </div>
+          <div id="fileList" class="filelist"></div>
+          <div class="note">提示：上传仅登记记录，点击“开始扫描”后才会对已上传的文件逐个执行扫描。</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>健康与统计</h2>
+        <div class="content">
+          <div id="health" class="row" style="gap:8px"></div>
+          <div class="note" id="statsNote"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:18px">
+      <h2>历史扫描结果</h2>
+      <div class="content">
+        <table class="table" id="historyTable">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>文件名</th>
+              <th>大小</th>
+              <th>感染状态</th>
+              <th>威胁等级</th>
+              <th>威胁数量</th>
+              <th>扫描时间</th>
+              <th>耗时(ms)</th>
+              <th>SHA256</th>
+              <th>MD5</th>
+              <th>来源IP</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="footer">© 本地测试页，仅用于演示上传与扫描流程。</div>
+  </div>
+
+  <script>
+    const API = {
+      upload: '/api/v1/malware/upload',
+      startScan: (id)=>`/api/v1/malware/scan/start/${id}`,
+      history: '/api/v1/malware/scan/history',
+      health: '/health'
+    };
+
+    const state = {
+      pickedFiles: [], // File 对象
+      uploaded: []     // { id, fileName, fileSize, sha256, md5, sourceIP, status }
+    };
+
+    // 工具
+    const fmtSize = (n)=>{
+      if(n==null) return '-';
+      const u=['B','KB','MB','GB'];let i=0;let x=Number(n);
+      while(x>=1024&&i<u.length-1){x/=1024;i++}
+      return `${x.toFixed(1)} ${u[i]}`;
+    };
+    const esc = (s)=>String(s==null?'':s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[c]));
+
+    // DOM
+    const dz = document.getElementById('dropzone');
+    const fi = document.getElementById('fileInput');
+    const btnChoose = document.getElementById('btnChoose');
+    const btnUpload = document.getElementById('btnUpload');
+    const btnScan = document.getElementById('btnScan');
+    const btnClear = document.getElementById('btnClear');
+    const fileList = document.getElementById('fileList');
+    const historyBody = document.getElementById('historyBody');
+    const healthBox = document.getElementById('health');
+
+    // 绑定交互 - 拖拽
+    ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev, e=>{e.preventDefault();dz.classList.add('drag')}));
+    ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev, e=>{e.preventDefault();dz.classList.remove('drag')}));
+    dz.addEventListener('drop', e=>{ const files=[...e.dataTransfer.files]; addPicked(files); });
+    dz.addEventListener('click', ()=>fi.click());
+    btnChoose.addEventListener('click', ()=>fi.click());
+    fi.addEventListener('change', ()=>{ addPicked([...fi.files]); fi.value=''; });
+
+    function addPicked(files){
+      const added = [];
+      files.forEach(f=>{ if(!state.pickedFiles.find(x=>x.name===f.name && x.size===f.size)){ state.pickedFiles.push(f); added.push(f);} });
+      renderPicked();
+    }
+
+    function renderPicked(){
+      if(state.pickedFiles.length===0){ fileList.innerHTML='<div class="note">未选择文件</div>'; return; }
+      fileList.innerHTML = state.pickedFiles.map((f,i)=>`<div class="fileitem"><div>${esc(f.name)} <span class="muted">(${fmtSize(f.size)})</span></div><button data-i="${i}" class="ghost">移除</button></div>`).join('');
+      fileList.querySelectorAll('button').forEach(btn=>btn.addEventListener('click', e=>{ const i=Number(btn.dataset.i); state.pickedFiles.splice(i,1); renderPicked(); }));
+    }
+
+    btnClear.addEventListener('click', ()=>{ state.pickedFiles=[]; renderPicked(); });
+
+    // 上传
+    btnUpload.addEventListener('click', async ()=>{
+      if(state.pickedFiles.length===0){ alert('请先选择文件'); return; }
+      btnUpload.disabled=true;
+      try{
+        const fd = new FormData();
+        // 后端支持多文件字段名 files 或单文件 file
+        state.pickedFiles.forEach(f=>fd.append('files', f));
+        const res = await fetch(API.upload,{ method:'POST', body:fd });
+        if(!res.ok) throw new Error('上传失败');
+        const data = await res.json();
+        if(data.code!==0) throw new Error(data.msg || '上传失败');
+        state.uploaded = data.data.uploaded || [];
+        alert(`上传成功 ${state.uploaded.length} 个文件`);
+        await loadHistory();
+      }catch(err){ alert(err.message); }
+      finally{ btnUpload.disabled=false; }
+    });
+
+    // 开始扫描（逐个对已上传记录触发）
+    btnScan.addEventListener('click', async ()=>{
+      if(!state.uploaded.length){ alert('请先上传文件'); return; }
+      btnScan.disabled=true;
+      try{
+        for(const item of state.uploaded){
+          const res = await fetch(API.startScan(item.id), { method:'POST' });
+          const data = await res.json().catch(()=>({}));
+          // 忽略单个失败，继续下一个
+        }
+        await loadHistory();
+        alert('扫描完成');
+      }catch(err){ alert('扫描过程出现问题'); }
+      finally{ btnScan.disabled=false; }
+    });
+
+    async function loadHealth(){
+      try{
+        const res = await fetch(API.health);
+        const j = await res.json();
+        const ok = j && (j.status==='ok' || j.code===0);
+        healthBox.innerHTML = ok ? '<span class="badge b-ok">后端在线</span>' : '<span class="badge b-warn">后端异常</span>';
+      }catch{ healthBox.innerHTML = '<span class="badge b-warn">后端不可达</span>'; }
+    }
+
+    async function loadHistory(){
+      try{
+        const res = await fetch(API.history);
+        const j = await res.json();
+        const list = (j && j.data && j.data.scan_history) ? j.data.scan_history : [];
+        renderHistory(list);
+      }catch(err){
+        historyBody.innerHTML = `<tr><td colspan="12" class="muted">加载失败</td></tr>`;
+      }
+    }
+
+    function badgeStatus(r){
+      if(r.infection_status==='已感染' || r.is_infected) return '<span class="badge b-bad">已感染</span>';
+      return '<span class="badge b-ok">未感染</span>';
+    }
+
+    function renderHistory(list){
+      if(!list.length){ historyBody.innerHTML = '<tr><td colspan="12" class="muted">暂无记录</td></tr>'; return; }
+      historyBody.innerHTML = list.map(r=>`
+        <tr>
+          <td>${r.id}</td>
+          <td>${esc(r.file_name)}</td>
+          <td>${fmtSize(r.file_size)}</td>
+          <td>${badgeStatus(r)}</td>
+          <td>${esc(r.threat_level||'-')}</td>
+          <td>${r.threat_count??'-'}</td>
+          <td>${r.scan_time? new Date(r.scan_time).toLocaleString() : '-'}</td>
+          <td>${r.scan_duration??'-'}</td>
+          <td><span class="muted">${esc(r.sha256||'-')}</span></td>
+          <td><span class="muted">${esc(r.md5||'-')}</span></td>
+          <td>${esc(r.source_ip||'-')}</td>
+          <td>${esc(r.status||'-')}</td>
+        </tr>
+      `).join('');
+    }
+
+    // 初始化
+    renderPicked();
+    loadHealth();
+    loadHistory();
+  </script>
+</body>
+</html>

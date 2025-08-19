@@ -26,6 +26,18 @@ func SetupRouter() *gin.Engine {
 	// 添加静态文件路由
 	r.Static("/static", "./static")
 
+	// 根路径提供前端页面；以及前端路由回退
+	r.StaticFile("/", "./static/index.html")
+	r.NoRoute(func(c *gin.Context) {
+		// 对非 /api 开头的路径回退到前端
+		path := c.Request.URL.Path
+		if len(path) >= 4 && path[:4] == "/api" {
+			c.JSON(404, gin.H{"error": "Not Found"})
+			return
+		}
+		c.File("./static/index.html")
+	})
+
 	// 添加简单健康检查端点（用于Docker健康检查）
 	r.GET("/health", handlers.SimpleHealthCheck)
 
@@ -290,9 +302,11 @@ func SetupRouter() *gin.Engine {
 		malware := api.Group("/malware")
 		{
 			// 文件扫描
-			malware.POST("/scan/file", handlers.ScanFile)         // 扫描上传文件
-			malware.POST("/scan/url", handlers.ScanUrl)           // 扫描URL文件
-			malware.GET("/scan/history", handlers.GetScanHistory) // 获取扫描历史
+			malware.POST("/scan/file", handlers.ScanFile)           // 扫描上传文件
+			malware.POST("/scan/url", handlers.ScanUrl)             // 扫描URL文件
+			malware.GET("/scan/history", handlers.GetScanHistory)   // 获取扫描历史
+			malware.POST("/upload", handlers.UploadFiles)           // 新增：文件上传（支持多文件）
+			malware.POST("/scan/start/:id", handlers.StartScanByID) // 新增：按ID启动扫描
 
 			// 扫描结果
 			malware.GET("/results/:hash", handlers.ScanFileByHash) // 获取扫描结果
