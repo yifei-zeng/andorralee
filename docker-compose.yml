@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile
     container_name: andorralee
     ports:
-      - "8081:8081"
+      - "9090:9090"
     volumes:
       - ./dm_home:/app/dm_home
     depends_on:
@@ -26,9 +26,7 @@ services:
       - DAMENG_PASSWORD=Dm123456
       - DAMENG_DATABASE=DOCKER_OPS
     restart: unless-stopped
-    # 使用host网络模式，以便能够访问宿主机的Docker守护进程
-    # 注意：这在Windows和macOS上可能不起作用，因为Docker在这些平台上运行在虚拟机中
-    # 在这种情况下，需要将宿主机的Docker套接字挂载到容器中
+    # 挂载宿主机 Docker 套接字（如需容器内访问 Docker）
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 

@@ -10,6 +10,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 全局Cowrie服务实例
+var globalCowrieService *services.CowrieService
+
+// SetCowrieService 设置全局Cowrie服务实例
+func SetCowrieService(service *services.CowrieService) {
+	globalCowrieService = service
+}
+
+// getCowrieService 获取Cowrie服务实例
+func getCowrieService() (*services.CowrieService, error) {
+	if globalCowrieService != nil {
+		return globalCowrieService, nil
+	}
+	return services.NewCowrieService()
+}
+
 // PullCowrieLogsRequest 拉取Cowrie日志请求参数
 type PullCowrieLogsRequest struct {
 	ContainerID string `json:"container_id" binding:"required"` // 容器ID
@@ -44,7 +60,7 @@ func PullCowrieLogs(c *gin.Context) {
 		return
 	}
 
-	service, err := services.NewCowrieService()
+	service, err := getCowrieService()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
 		return
@@ -66,10 +82,16 @@ func PullCowrieLogs(c *gin.Context) {
 // @Success 200 {object} utils.Response
 // @Router /cowrie/logs [get]
 func GetAllCowrieLogs(c *gin.Context) {
-	service, err := services.NewCowrieService()
+	service, err := getCowrieService()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
 		return
+	}
+
+	// 在返回前尝试刷新一次：从运行中的 Cowrie 容器拉取最新日志
+	if err := service.AutoRefreshOnce(); err != nil {
+		// 不阻断后续查询，仅记录错误
+		// 可根据需要降级为 Debug 级别
 	}
 
 	logs, err := service.GetAllLogs()

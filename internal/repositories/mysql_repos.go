@@ -628,10 +628,15 @@ func (r *MySQLHeadlingAuthLogRepo) GetByID(id uint) (*HeadlingAuthLog, error) {
 
 // GetByAuthID 根据认证ID获取Headling认证日志
 func (r *MySQLHeadlingAuthLogRepo) GetByAuthID(authID string) (*HeadlingAuthLog, error) {
+	// 使用 Find + RowsAffected 避免 gorm.ErrRecordNotFound 被记录为错误日志
 	var log HeadlingAuthLog
-	result := r.DB.Where("auth_id = ?", authID).First(&log)
+	result := r.DB.Where("auth_id = ?", authID).Limit(1).Find(&log)
 	if result.Error != nil {
 		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		// 正常的“无数据”场景
+		return nil, nil
 	}
 	return &log, nil
 }
@@ -777,10 +782,15 @@ func (r *MySQLCowrieLogRepo) GetByID(id uint) (*CowrieLog, error) {
 
 // GetByAuthID 根据认证ID获取Cowrie日志
 func (r *MySQLCowrieLogRepo) GetByAuthID(authID string) (*CowrieLog, error) {
+	// 使用 Find + RowsAffected 避免 gorm.ErrRecordNotFound 被记录为错误日志
 	var log CowrieLog
-	result := r.DB.Where("auth_id = ?", authID).First(&log)
+	result := r.DB.Where("auth_id = ?", authID).Order("id").Limit(1).Find(&log)
 	if result.Error != nil {
 		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		// 正常的“无数据”场景
+		return nil, nil
 	}
 	return &log, nil
 }
@@ -804,6 +814,16 @@ func (r *MySQLCowrieLogRepo) GetByContainerID(containerID string) ([]CowrieLog, 
 	var logs []CowrieLog
 	result := r.DB.Where("container_id = ?", containerID).Order("event_time DESC").Find(&logs)
 	return logs, result.Error
+}
+
+// GetLatestByContainerID 获取指定容器的最新一条Cowrie日志
+func (r *MySQLCowrieLogRepo) GetLatestByContainerID(containerID string) (*CowrieLog, error) {
+	var log CowrieLog
+	result := r.DB.Where("container_id = ?", containerID).Order("event_time DESC").Limit(1).First(&log)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &log, nil
 }
 
 // GetByProtocol 根据协议获取Cowrie日志

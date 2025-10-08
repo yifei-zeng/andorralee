@@ -19,6 +19,8 @@ type DatabaseService interface {
 	SaveDetectionResult(detection *repositories.DetectionResult) error
 	GetScanResult(fileHash string) (*repositories.ScanResult, error)
 	GetScanHistory(limit int) ([]repositories.ScanResult, error)
+	// 新增：按任意哈希（SHA256或MD5）查询扫描结果
+	GetScanResultByAnyHash(hash string) (*repositories.ScanResult, error)
 	// 新增：按ID获取与更新扫描结果
 	GetScanByID(id uint) (*repositories.ScanResult, error)
 	UpdateScanResult(id uint, updates map[string]interface{}) error
@@ -130,6 +132,18 @@ func (s *MySQLService) GetScanHistory(limit int) ([]repositories.ScanResult, err
 	var results []repositories.ScanResult
 	err := s.db.Order("scan_time DESC").Limit(limit).Find(&results).Error
 	return results, err
+}
+
+func (s *MySQLService) GetScanResultByAnyHash(hash string) (*repositories.ScanResult, error) {
+	if s.db == nil {
+		return nil, errors.New("MySQL数据库未初始化")
+	}
+	var result repositories.ScanResult
+	err := s.db.Where("file_hash = ? OR md5_hash = ?", hash, hash).First(&result).Error
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 func (s *MySQLService) GetScanByID(id uint) (*repositories.ScanResult, error) {
@@ -359,6 +373,18 @@ func (s *DamengService) GetScanHistory(limit int) ([]repositories.ScanResult, er
 	var results []repositories.ScanResult
 	err := s.db.Order("scan_time DESC").Limit(limit).Find(&results).Error
 	return results, err
+}
+
+func (s *DamengService) GetScanResultByAnyHash(hash string) (*repositories.ScanResult, error) {
+	if s.db == nil {
+		return nil, errors.New("达梦数据库未初始化")
+	}
+	var result repositories.ScanResult
+	err := s.db.Where("file_hash = ? OR md5_hash = ?", hash, hash).First(&result).Error
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
 }
 
 func (s *DamengService) GetScanByID(id uint) (*repositories.ScanResult, error) {

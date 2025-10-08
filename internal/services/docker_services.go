@@ -4,6 +4,7 @@ import (
 	"andorralee/internal/config"
 	"andorralee/internal/repositories"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -38,6 +39,12 @@ func IsDockerAvailable() bool {
 
 // PullDockerImage 拉取 Docker 镜像并记录到数据库
 func PullDockerImage(imageName string) error {
+	if config.DockerCli == nil {
+		err := errors.New("Docker客户端未初始化")
+		// 记录失败日志
+		logPullImageOperation(imageName, "", "failed", err.Error())
+		return err
+	}
 	// 拉取镜像
 	reader, err := config.DockerCli.ImagePull(context.Background(), imageName, image.PullOptions{})
 	if err != nil {
@@ -120,6 +127,9 @@ func PullDockerImage(imageName string) error {
 
 // ListDockerImages 从数据库中列出所有镜像
 func ListDockerImages() ([]image.Summary, error) {
+	if config.DockerCli == nil {
+		return nil, errors.New("Docker客户端未初始化")
+	}
 	// 首先从Docker获取最新镜像列表
 	images, err := config.DockerCli.ImageList(context.Background(), image.ListOptions{})
 	if err != nil {
@@ -134,6 +144,9 @@ func ListDockerImages() ([]image.Summary, error) {
 
 // GetDockerImageByID 根据ID获取镜像详情
 func GetDockerImageByID(imageID string) (*types.ImageInspect, error) {
+	if config.DockerCli == nil {
+		return nil, errors.New("Docker客户端未初始化")
+	}
 	inspect, _, err := config.DockerCli.ImageInspectWithRaw(context.Background(), imageID)
 	if err != nil {
 		return nil, fmt.Errorf("获取镜像详情失败: %v", err)
@@ -147,6 +160,9 @@ func GetDockerImageByID(imageID string) (*types.ImageInspect, error) {
 
 // DeleteDockerImage 删除本地Docker镜像并从数据库中移除
 func DeleteDockerImage(imageID string) error {
+	if config.DockerCli == nil {
+		return errors.New("Docker客户端未初始化")
+	}
 	// 从Docker中删除镜像
 	_, err := config.DockerCli.ImageRemove(context.Background(), imageID, image.RemoveOptions{Force: true})
 	if err != nil {
@@ -159,6 +175,9 @@ func DeleteDockerImage(imageID string) error {
 
 // TagDockerImage 更新镜像标签（打标签）
 func TagDockerImage(imageID, newRepo, newTag string) error {
+	if config.DockerCli == nil {
+		return errors.New("Docker客户端未初始化")
+	}
 	// 给镜像打标签
 	err := config.DockerCli.ImageTag(context.Background(), imageID, newRepo+":"+newTag)
 	if err != nil {

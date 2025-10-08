@@ -156,7 +156,12 @@ func CreateMemoryContainerInstance(c *gin.Context) {
 			exposedPorts[port] = struct{}{}
 			portBindings[port] = []nat.PortBinding{
 				{
-					HostIP:   "0.0.0.0",
+					HostIP: func() string {
+						if req.IP != "" {
+							return req.IP
+						}
+						return "0.0.0.0"
+					}(),
 					HostPort: hostPort,
 				},
 			}
@@ -246,7 +251,12 @@ func CreateMemoryContainerInstance(c *gin.Context) {
 		HoneypotName:  req.HoneypotName,
 		ContainerName: containerName,
 		ContainerID:   containerID,
-		IP:            "0.0.0.0",
+		IP: func() string {
+			if req.IP != "" {
+				return req.IP
+			}
+			return "0.0.0.0"
+		}(),
 		HoneypotIP:    containerIP,
 		Port:          mainPort,
 		Protocol:      req.Protocol,
@@ -264,6 +274,12 @@ func CreateMemoryContainerInstance(c *gin.Context) {
 	instanceMutex.Unlock()
 
 	// 返回创建结果
+	// 生成友好的端口展示（hostPort protocol）
+	portsPretty := make([]string, 0, len(finalPortMappings))
+	for _, hostPort := range finalPortMappings {
+		portsPretty = append(portsPretty, fmt.Sprintf("%s %s", hostPort, strings.ToLower(req.Protocol)))
+	}
+
 	result := map[string]interface{}{
 		"id":               instance.ID,
 		"name":             instance.Name,
@@ -279,6 +295,7 @@ func CreateMemoryContainerInstance(c *gin.Context) {
 		"image_name":       instance.ImageName,
 		"image_id":         instance.ImageID,
 		"port_mappings":    req.PortMappings,
+		"ports_pretty":     portsPretty,
 		"environment":      req.Environment,
 		"create_time":      instance.CreateTime,
 		"description":      instance.Description,
@@ -409,111 +426,140 @@ func GetContainerIDStatus(c *gin.Context) {
 // StartMemoryContainerInstance 启动内存容器实例
 func StartMemoryContainerInstance(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		utils.ResponseError(c, http.StatusBadRequest, "无效的ID: "+err.Error())
+	// 优先尝试按数字实例ID处理；如果不是数字，则按容器ID（哈希）处理
+	if id, err := strconv.ParseUint(idStr, 10, 32); err == nil {
+		instanceMutex.RLock()
+		instance, exists := memoryInstances[uint(id)]
+		instanceMutex.RUnlock()
+
+		if !exists {
+			utils.ResponseError(c, http.StatusNotFound, "容器实例不存在")
+			return
+		}
+
+		// 启动Docker容器
+		ctx := context.Background()
+		if err := config.DockerCli.ContainerStart(ctx, instance.ContainerID, container.StartOptions{}); err != nil {
+			utils.ResponseError(c, http.StatusInternalServerError, "启动容器失败: "+err.Error())
+			return
+		}
+
+		// 更新状态
+		instanceMutex.Lock()
+		instance.Status = "running"
+		instance.UpdateTime = time.Now()
+		instanceMutex.Unlock()
+
+		utils.ResponseSuccess(c, "容器启动成功")
 		return
 	}
 
-	instanceMutex.RLock()
-	instance, exists := memoryInstances[uint(id)]
-	instanceMutex.RUnlock()
-
-	if !exists {
-		utils.ResponseError(c, http.StatusNotFound, "容器实例不存在")
-		return
-	}
-
-	// 启动Docker容器
+	// 非数字：视为 Docker 容器ID
 	ctx := context.Background()
-	err = config.DockerCli.ContainerStart(ctx, instance.ContainerID, container.StartOptions{})
-	if err != nil {
+	if err := config.DockerCli.ContainerStart(ctx, idStr, container.StartOptions{}); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "启动容器失败: "+err.Error())
 		return
 	}
-
-	// 更新状态
+	// 若能匹配到内存实例，则同步状态
 	instanceMutex.Lock()
-	instance.Status = "running"
-	instance.UpdateTime = time.Now()
+	for _, inst := range memoryInstances {
+		if inst.ContainerID == idStr {
+			inst.Status = "running"
+			inst.UpdateTime = time.Now()
+			break
+		}
+	}
 	instanceMutex.Unlock()
-
 	utils.ResponseSuccess(c, "容器启动成功")
 }
 
 // StopMemoryContainerInstance 停止内存容器实例
 func StopMemoryContainerInstance(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		utils.ResponseError(c, http.StatusBadRequest, "无效的ID: "+err.Error())
+	// 数字实例ID优先
+	if id, err := strconv.ParseUint(idStr, 10, 32); err == nil {
+		instanceMutex.RLock()
+		instance, exists := memoryInstances[uint(id)]
+		instanceMutex.RUnlock()
+		if !exists {
+			utils.ResponseError(c, http.StatusNotFound, "容器实例不存在")
+			return
+		}
+		ctx := context.Background()
+		timeout := 30
+		if err := config.DockerCli.ContainerStop(ctx, instance.ContainerID, container.StopOptions{Timeout: &timeout}); err != nil {
+			utils.ResponseError(c, http.StatusInternalServerError, "停止容器失败: "+err.Error())
+			return
+		}
+		instanceMutex.Lock()
+		instance.Status = "stopped"
+		instance.UpdateTime = time.Now()
+		instanceMutex.Unlock()
+		utils.ResponseSuccess(c, "容器停止成功")
 		return
 	}
 
-	instanceMutex.RLock()
-	instance, exists := memoryInstances[uint(id)]
-	instanceMutex.RUnlock()
-
-	if !exists {
-		utils.ResponseError(c, http.StatusNotFound, "容器实例不存在")
-		return
-	}
-
-	// 停止Docker容器
+	// 非数字：视为 Docker 容器ID
 	ctx := context.Background()
-	timeout := 30 // 30秒超时
-	err = config.DockerCli.ContainerStop(ctx, instance.ContainerID, container.StopOptions{
-		Timeout: &timeout,
-	})
-	if err != nil {
+	timeout := 30
+	if err := config.DockerCli.ContainerStop(ctx, idStr, container.StopOptions{Timeout: &timeout}); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "停止容器失败: "+err.Error())
 		return
 	}
-
-	// 更新状态
 	instanceMutex.Lock()
-	instance.Status = "stopped"
-	instance.UpdateTime = time.Now()
+	for _, inst := range memoryInstances {
+		if inst.ContainerID == idStr {
+			inst.Status = "stopped"
+			inst.UpdateTime = time.Now()
+			break
+		}
+	}
 	instanceMutex.Unlock()
-
 	utils.ResponseSuccess(c, "容器停止成功")
 }
 
 // RestartMemoryContainerInstance 重启内存容器实例
 func RestartMemoryContainerInstance(c *gin.Context) {
 	idStr := c.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		utils.ResponseError(c, http.StatusBadRequest, "无效的ID: "+err.Error())
+	// 数字实例ID优先
+	if id, err := strconv.ParseUint(idStr, 10, 32); err == nil {
+		instanceMutex.RLock()
+		instance, exists := memoryInstances[uint(id)]
+		instanceMutex.RUnlock()
+		if !exists {
+			utils.ResponseError(c, http.StatusNotFound, "容器实例不存在")
+			return
+		}
+		ctx := context.Background()
+		timeout := 30
+		if err := config.DockerCli.ContainerRestart(ctx, instance.ContainerID, container.StopOptions{Timeout: &timeout}); err != nil {
+			utils.ResponseError(c, http.StatusInternalServerError, "重启容器失败: "+err.Error())
+			return
+		}
+		instanceMutex.Lock()
+		instance.Status = "running"
+		instance.UpdateTime = time.Now()
+		instanceMutex.Unlock()
+		utils.ResponseSuccess(c, "容器重启成功")
 		return
 	}
 
-	instanceMutex.RLock()
-	instance, exists := memoryInstances[uint(id)]
-	instanceMutex.RUnlock()
-
-	if !exists {
-		utils.ResponseError(c, http.StatusNotFound, "容器实例不存在")
-		return
-	}
-
-	// 重启Docker容器
+	// 非数字：视为 Docker 容器ID
 	ctx := context.Background()
-	timeout := 30 // 30秒超时
-	err = config.DockerCli.ContainerRestart(ctx, instance.ContainerID, container.StopOptions{
-		Timeout: &timeout,
-	})
-	if err != nil {
+	timeout := 30
+	if err := config.DockerCli.ContainerRestart(ctx, idStr, container.StopOptions{Timeout: &timeout}); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "重启容器失败: "+err.Error())
 		return
 	}
-
-	// 更新状态
 	instanceMutex.Lock()
-	instance.Status = "running"
-	instance.UpdateTime = time.Now()
+	for _, inst := range memoryInstances {
+		if inst.ContainerID == idStr {
+			inst.Status = "running"
+			inst.UpdateTime = time.Now()
+			break
+		}
+	}
 	instanceMutex.Unlock()
-
 	utils.ResponseSuccess(c, "容器重启成功")
 }
 

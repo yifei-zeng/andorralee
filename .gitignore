@@ -1,0 +1,23 @@
+## Ignore large/distribution folders not to be committed
+uploads/
+samples/
+send/
+offline-images/
+
+## Build outputs and binaries
+build/
+*.exe
+
+## Large offline artifacts
+*.tar
+*.zip
+tmp_ctx_arm64_root/
+deployment/offline/honeypotV1.0/**/*.tar
+deployment/offline/honeypotV1.0/**/*.zip
+deployment/offline/honeypotV1.0/ctx_arm64/andorralee
+deployment/offline/releases/
+
+## IDE
+.idea/
+.vscode/
+

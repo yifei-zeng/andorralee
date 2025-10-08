@@ -12,7 +12,11 @@ require (
 	gorm.io/gorm v1.26.1
 )
 
-require github.com/google/uuid v1.6.0
+require (
+	github.com/go-sql-driver/mysql v1.9.1
+	github.com/google/uuid v1.6.0
+	github.com/yeka/zip v0.0.0-20231116150916-03d6312748a9
+)
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
@@ -31,7 +35,6 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.25.0 // indirect
-	github.com/go-sql-driver/mysql v1.9.1 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v1.0.0 // indirect

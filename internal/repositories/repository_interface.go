@@ -139,6 +139,7 @@ type CowrieLogRepository interface {
 	GetBySessionID(sessionID string) ([]CowrieLog, error)
 	GetBySourceIP(sourceIP string) ([]CowrieLog, error)
 	GetByContainerID(containerID string) ([]CowrieLog, error)
+	GetLatestByContainerID(containerID string) (*CowrieLog, error)
 	GetByProtocol(protocol string) ([]CowrieLog, error)
 	GetByTimeRange(startTime, endTime time.Time) ([]CowrieLog, error)
 	GetByCommand(command string) ([]CowrieLog, error)

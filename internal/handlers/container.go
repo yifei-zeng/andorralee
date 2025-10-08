@@ -3,6 +3,7 @@ package handlers
 import (
 	"andorralee/internal/services"
 	"andorralee/pkg/utils"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,6 +31,10 @@ func StartContainer(c *gin.Context) {
 		utils.ResponseError(c, 400, "参数错误: "+err.Error())
 		return
 	}
+	if !services.IsDockerAvailable() {
+		utils.ResponseError(c, 503, "Docker服务不可用")
+		return
+	}
 
 	containerID, err := services.StartContainer(req.Image, req.Name, req.PortMap, req.EnvVars)
 	if err != nil {
@@ -54,6 +59,10 @@ func StopContainer(c *gin.Context) {
 		utils.ResponseError(c, 400, "container_id 不能为空")
 		return
 	}
+	if !services.IsDockerAvailable() {
+		utils.ResponseError(c, 503, "Docker服务不可用")
+		return
+	}
 
 	if err := services.StopContainer(containerID); err != nil {
 		utils.ResponseError(c, 500, "停止容器失败: "+err.Error())
@@ -72,12 +81,25 @@ func StopContainer(c *gin.Context) {
 // @Success 200 {object} utils.Response
 // @Router /docker/logs [get]
 func GetContainerLogs(c *gin.Context) {
-	containerID := c.Query("container_id")
+	// 兼容 path 参数 /docker/container/:id
+	id := c.Param("id")
+	containerID := id
 	if containerID == "" {
-		utils.ResponseError(c, 400, "container_id 不能为空")
+		containerID = c.Query("container_id")
+	}
+	if containerID == "" {
+		utils.ResponseError(c, http.StatusBadRequest, "container_id 不能为空")
 		return
 	}
-
+	if !services.IsDockerAvailable() {
+		utils.ResponseError(c, 503, "Docker服务不可用")
+		return
+	}
+	// 先检查容器信息是否可获取
+	if _, err := services.GetContainerInfo(containerID); err != nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "获取容器信息失败: "+err.Error())
+		return
+	}
 	logs, err := services.GetContainerLogs(containerID)
 	if err != nil {
 		utils.ResponseError(c, 500, "获取日志失败: "+err.Error())
@@ -85,6 +107,61 @@ func GetContainerLogs(c *gin.Context) {
 	}
 
 	utils.ResponseSuccess(c, logs)
+	return
+}
+
+// StartContainerByID 通过容器ID启动已存在的容器
+func StartContainerByID(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		utils.ResponseError(c, http.StatusBadRequest, "容器ID不能为空")
+		return
+	}
+	if !services.IsDockerAvailable() {
+		utils.ResponseError(c, 503, "Docker服务不可用")
+		return
+	}
+	if err := services.StartExistingContainer(id); err != nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "启动容器失败: "+err.Error())
+		return
+	}
+	utils.ResponseSuccess(c, "容器启动成功")
+}
+
+// StopContainerByID 通过容器ID停止容器
+func StopContainerByID(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		utils.ResponseError(c, http.StatusBadRequest, "容器ID不能为空")
+		return
+	}
+	if !services.IsDockerAvailable() {
+		utils.ResponseError(c, 503, "Docker服务不可用")
+		return
+	}
+	if err := services.StopContainer(id); err != nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "停止容器失败: "+err.Error())
+		return
+	}
+	utils.ResponseSuccess(c, "容器停止成功")
+}
+
+// RestartContainerByID 通过容器ID重启容器
+func RestartContainerByID(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		utils.ResponseError(c, http.StatusBadRequest, "容器ID不能为空")
+		return
+	}
+	if !services.IsDockerAvailable() {
+		utils.ResponseError(c, 503, "Docker服务不可用")
+		return
+	}
+	if err := services.RestartContainer(id, 10); err != nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "重启容器失败: "+err.Error())
+		return
+	}
+	utils.ResponseSuccess(c, "容器重启成功")
 }
 
 // ListContainers 列出所有容器
@@ -95,6 +172,10 @@ func GetContainerLogs(c *gin.Context) {
 // @Success 200 {object} utils.Response
 // @Router /docker/list [get]
 func ListContainers(c *gin.Context) {
+	if !services.IsDockerAvailable() {
+		utils.ResponseError(c, 503, "Docker服务不可用")
+		return
+	}
 	containers, err := services.ListContainers()
 	if err != nil {
 		utils.ResponseError(c, 500, "获取容器列表失败: "+err.Error())
@@ -112,9 +193,17 @@ func ListContainers(c *gin.Context) {
 // @Success 200 {object} utils.Response
 // @Router /docker/info [get]
 func GetContainerInfo(c *gin.Context) {
-	containerID := c.Query("container_id")
+	// 兼容 path 参数 /docker/container/:id
+	containerID := c.Param("id")
+	if containerID == "" {
+		containerID = c.Query("container_id")
+	}
 	if containerID == "" {
 		utils.ResponseError(c, 400, "container_id 不能为空")
+		return
+	}
+	if !services.IsDockerAvailable() {
+		utils.ResponseError(c, 503, "Docker服务不可用")
 		return
 	}
 	info, err := services.GetContainerInfo(containerID)

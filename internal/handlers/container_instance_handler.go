@@ -29,6 +29,7 @@ type CreateContainerInstanceRequest struct {
 	HoneypotName  string            `json:"honeypot_name" binding:"required"` // 蜜罐名称
 	ImageName     string            `json:"image_name" binding:"required"`    // Docker镜像名称
 	Protocol      string            `json:"protocol" binding:"required"`      // 协议类型
+	IP            string            `json:"ip"`                               // 绑定的主机IP（可选，默认 0.0.0.0）
 	InterfaceType string            `json:"interface_type"`                   // 接口类型
 	PortMappings  map[string]string `json:"port_mappings"`                    // 端口映射（支持"auto"自动分配）
 	Environment   map[string]string `json:"environment"`                      // 环境变量
@@ -118,7 +119,12 @@ func CreateContainerInstance(c *gin.Context) {
 			exposedPorts[port] = struct{}{}
 			portBindings[port] = []nat.PortBinding{
 				{
-					HostIP:   "0.0.0.0",
+					HostIP: func() string {
+						if req.IP != "" {
+							return req.IP
+						}
+						return "0.0.0.0"
+					}(),
 					HostPort: hostPort,
 				},
 			}
@@ -225,7 +231,12 @@ func CreateContainerInstance(c *gin.Context) {
 		HoneypotName:  req.HoneypotName,
 		ContainerName: containerName,
 		ContainerID:   containerID, // 确保容器ID被正确保存
-		IP:            "0.0.0.0",
+		IP: func() string {
+			if req.IP != "" {
+				return req.IP
+			}
+			return "0.0.0.0"
+		}(),
 		HoneypotIP:    containerIP,
 		Port:          mainPort,
 		Protocol:      req.Protocol,
@@ -256,26 +267,33 @@ func CreateContainerInstance(c *gin.Context) {
 	}
 
 	// 7. 返回创建结果
+	// 生成友好的端口展示（hostPort protocol）
+	portsPretty := make([]string, 0, len(finalPortMappings))
+	for _, hostPort := range finalPortMappings {
+		portsPretty = append(portsPretty, fmt.Sprintf("%s %s", hostPort, strings.ToLower(req.Protocol)))
+	}
+
 	result := map[string]interface{}{
-		"id":                    instance.ID,
-		"name":                  instance.Name,
-		"honeypot_name":         instance.HoneypotName,
-		"container_name":        instance.ContainerName,
-		"container_id":          instance.ContainerID,
-		"ip":                    instance.IP,
-		"honeypot_ip":           instance.HoneypotIP,
-		"port":                  instance.Port,
-		"protocol":              instance.Protocol,
-		"interface_type":        instance.InterfaceType,
-		"status":                instance.Status,
-		"image_name":            instance.ImageName,
-		"image_id":              instance.ImageID,
-		"port_mappings":         finalPortMappings,        // 显示分配后的端口映射
-		"requested_port_mappings": req.PortMappings,       // 显示原始请求的端口映射
-		"environment":           req.Environment,
-		"create_time":           instance.CreateTime,
-		"description":           instance.Description,
-		"docker_available":      dockerAvailable,
+		"id":                      instance.ID,
+		"name":                    instance.Name,
+		"honeypot_name":           instance.HoneypotName,
+		"container_name":          instance.ContainerName,
+		"container_id":            instance.ContainerID,
+		"ip":                      instance.IP,
+		"honeypot_ip":             instance.HoneypotIP,
+		"port":                    instance.Port,
+		"protocol":                instance.Protocol,
+		"interface_type":          instance.InterfaceType,
+		"status":                  instance.Status,
+		"image_name":              instance.ImageName,
+		"image_id":                instance.ImageID,
+		"port_mappings":           finalPortMappings, // 显示分配后的端口映射
+		"ports_pretty":            portsPretty,       // 友好展示：如 12223 ssh
+		"requested_port_mappings": req.PortMappings,  // 显示原始请求的端口映射
+		"environment":             req.Environment,
+		"create_time":             instance.CreateTime,
+		"description":             instance.Description,
+		"docker_available":        dockerAvailable,
 	}
 
 	utils.ResponseSuccess(c, result)
@@ -321,7 +339,41 @@ func GetAllContainerInstances(c *gin.Context) {
 	}
 
 	fmt.Printf("返回 %d 个容器实例\n", len(instances))
-	utils.ResponseSuccess(c, instances)
+	// 包装响应，增加友好端口展示
+	resp := make([]map[string]interface{}, 0, len(instances))
+	for _, inst := range instances {
+		portsPretty := []string{}
+		if inst.PortMappings != "" {
+			var pm map[string]string
+			if err := json.Unmarshal([]byte(inst.PortMappings), &pm); err == nil {
+				for _, host := range pm {
+					portsPretty = append(portsPretty, fmt.Sprintf("%s %s", host, strings.ToLower(inst.Protocol)))
+				}
+			}
+		}
+		resp = append(resp, map[string]interface{}{
+			"id":             inst.ID,
+			"name":           inst.Name,
+			"honeypot_name":  inst.HoneypotName,
+			"container_name": inst.ContainerName,
+			"container_id":   inst.ContainerID,
+			"ip":             inst.IP,
+			"honeypot_ip":    inst.HoneypotIP,
+			"port":           inst.Port,
+			"protocol":       inst.Protocol,
+			"interface_type": inst.InterfaceType,
+			"status":         inst.Status,
+			"image_name":     inst.ImageName,
+			"image_id":       inst.ImageID,
+			"port_mappings":  inst.PortMappings,
+			"ports_pretty":   portsPretty,
+			"environment":    inst.Environment,
+			"create_time":    inst.CreateTime,
+			"update_time":    inst.UpdateTime,
+			"description":    inst.Description,
+		})
+	}
+	utils.ResponseSuccess(c, resp)
 }
 
 // SyncContainerStatus 同步所有容器状态
@@ -491,7 +543,38 @@ func GetContainerInstanceByID(c *gin.Context) {
 		return
 	}
 
-	utils.ResponseSuccess(c, instance)
+	// 增加 ports_pretty
+	portsPretty := []string{}
+	if instance.PortMappings != "" {
+		var pm map[string]string
+		if err := json.Unmarshal([]byte(instance.PortMappings), &pm); err == nil {
+			for _, host := range pm {
+				portsPretty = append(portsPretty, fmt.Sprintf("%s %s", host, strings.ToLower(instance.Protocol)))
+			}
+		}
+	}
+	result := map[string]interface{}{
+		"id":             instance.ID,
+		"name":           instance.Name,
+		"honeypot_name":  instance.HoneypotName,
+		"container_name": instance.ContainerName,
+		"container_id":   instance.ContainerID,
+		"ip":             instance.IP,
+		"honeypot_ip":    instance.HoneypotIP,
+		"port":           instance.Port,
+		"protocol":       instance.Protocol,
+		"interface_type": instance.InterfaceType,
+		"status":         instance.Status,
+		"image_name":     instance.ImageName,
+		"image_id":       instance.ImageID,
+		"port_mappings":  instance.PortMappings,
+		"ports_pretty":   portsPretty,
+		"environment":    instance.Environment,
+		"create_time":    instance.CreateTime,
+		"update_time":    instance.UpdateTime,
+		"description":    instance.Description,
+	}
+	utils.ResponseSuccess(c, result)
 }
 
 // StartContainerInstance 启动容器实例
@@ -1000,7 +1083,29 @@ func DeployImageToContainer(c *gin.Context) {
 		return
 	}
 
-	// 11. 返回部署结果
+	// 11. 友好端口展示
+	inferProto := func(p int) string {
+		switch p {
+		case 22, 2222:
+			return "ssh"
+		case 21:
+			return "ftp"
+		case 23:
+			return "telnet"
+		case 80, 8080:
+			return "http"
+		case 443, 8443:
+			return "https"
+		default:
+			return "tcp"
+		}
+	}
+	portsPretty := []string{}
+	for _, host := range req.PortMappings {
+		portsPretty = append(portsPretty, fmt.Sprintf("%s %s", host, inferProto(mainPort)))
+	}
+
+	// 12. 返回部署结果
 	result := map[string]interface{}{
 		"id":             instance.ID,
 		"name":           instance.Name,
@@ -1013,6 +1118,7 @@ func DeployImageToContainer(c *gin.Context) {
 		"image_name":     instance.ImageName,
 		"image_id":       instance.ImageID,
 		"port_mappings":  req.PortMappings,
+		"ports_pretty":   portsPretty,
 		"environment":    req.Environment,
 		"create_time":    instance.CreateTime,
 		"message":        fmt.Sprintf("成功将镜像 %s 部署到容器 %s", req.ImageName, req.ContainerName),

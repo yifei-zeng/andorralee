@@ -25,9 +25,16 @@ func SetupRouter() *gin.Engine {
 
 	// 添加静态文件路由
 	r.Static("/static", "./static")
+	r.Static("/frontend", "./frontend")
+
+	// 添加API测试界面路由
+	r.StaticFile("/api-test", "./frontend/api-test.html")
+
+	// 病毒检测专用页面路由
+	r.StaticFile("/malware", "./frontend/malware.html")
 
 	// 根路径提供前端页面；以及前端路由回退
-	r.StaticFile("/", "./static/index.html")
+	r.StaticFile("/", "./frontend/index.html")
 	r.NoRoute(func(c *gin.Context) {
 		// 对非 /api 开头的路径回退到前端
 		path := c.Request.URL.Path
@@ -63,6 +70,10 @@ func SetupRouter() *gin.Engine {
 			docker.GET("/logs", handlers.GetContainerLogs)
 			docker.GET("/containers", handlers.ListContainers)
 			docker.GET("/container/:id", handlers.GetContainerInfo)
+			// 通过容器ID直接控制容器：避免把 Docker 容器ID 当成数值实例ID
+			docker.POST("/container/:id/start", handlers.StartContainerByID)
+			docker.POST("/container/:id/stop", handlers.StopContainerByID)
+			docker.POST("/container/:id/restart", handlers.RestartContainerByID)
 		}
 
 		// ------------------------------ 蜜罐管理接口 ------------------------------
@@ -303,20 +314,25 @@ func SetupRouter() *gin.Engine {
 		{
 			// 文件扫描
 			malware.POST("/scan/file", handlers.ScanFile)           // 扫描上传文件
+			malware.POST("/scan/dir", handlers.ScanDirectory)       // 扫描目录所有文件
 			malware.POST("/scan/url", handlers.ScanUrl)             // 扫描URL文件
 			malware.GET("/scan/history", handlers.GetScanHistory)   // 获取扫描历史
 			malware.POST("/upload", handlers.UploadFiles)           // 新增：文件上传（支持多文件）
 			malware.POST("/scan/start/:id", handlers.StartScanByID) // 新增：按ID启动扫描
+			// 从 Cowrie 容器拉取样本
+			malware.POST("/cowrie/pull", handlers.PullFromCowrie)
 
 			// 扫描结果
 			malware.GET("/results/:hash", handlers.ScanFileByHash) // 获取扫描结果
 			malware.GET("/statistics", handlers.GetMalwareStats)   // 获取检测统计
+			malware.POST("/evaluate", handlers.EvaluateDataset)    // 评估数据集表现
 
 			// 病毒特征管理
 			signatures := malware.Group("/signatures")
 			{
-				signatures.GET("", handlers.GetMalwareSignatures) // 获取特征列表
-				signatures.POST("", handlers.AddMalwareSignature) // 添加特征
+				signatures.GET("", handlers.GetMalwareSignatures)            // 获取特征列表
+				signatures.POST("", handlers.AddMalwareSignature)            // 添加特征
+				signatures.POST("/import", handlers.ImportDatasetSignatures) // 从数据集导入签名
 			}
 		}
 

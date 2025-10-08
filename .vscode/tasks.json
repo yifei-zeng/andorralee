@@ -16,6 +16,28 @@
 				"$go"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Build all",
+			"type": "shell",
+			"command": "go",
+			"args": [
+				"build",
+				"./..."
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "Go Build All",
+			"type": "shell",
+			"command": "go",
+			"args": [
+				"build",
+				"./..."
+			],
+			"isBackground": false,
+			"group": "build"
 		}
 	]
 }

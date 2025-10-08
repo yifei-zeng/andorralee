@@ -7,6 +7,7 @@ ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 ARG TARGETOS
 ARG TARGETARCH
+ARG GOPROXY=https://goproxy.cn,direct
 
 # 设置工作目录
 WORKDIR /app
@@ -17,15 +18,17 @@ RUN apk --no-cache add git ca-certificates tzdata
 # 复制go.mod和go.sum文件
 COPY go.mod go.sum ./
 
-# 下载依赖
-RUN go mod download
+# 配置代理并下载依赖（显示详细输出，便于观察进度）
+RUN go env -w GOPROXY=${GOPROXY} \
+    && go env -w GOSUMDB=off \
+    && go mod download -x
 
 # 复制源代码
 COPY . .
 
 # 构建应用 - 支持交叉编译
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -a -installsuffix cgo -ldflags '-extldflags "-static"' \
+    go build -v -a -installsuffix cgo -ldflags '-extldflags "-static"' \
     -o andorralee ./cmd/main.go
 
 # 运行时镜像 - 使用更兼容的基础镜像
@@ -55,16 +58,15 @@ WORKDIR /app
 COPY --from=builder /app/andorralee /app/
 RUN chmod +x /app/andorralee
 
-# 复制必要的配置文件和静态资源
+# 复制必要的静态资源（若存在）
 COPY --from=builder /app/static /app/static
-COPY --from=builder /app/scripts /app/scripts
 
 # 创建必要的目录并设置权限
 RUN mkdir -p /app/dm_home /app/logs /app/data && \
     chown -R appuser:appgroup /app
 
-# 暴露应用端口
-EXPOSE 8081
+# 暴露应用端口（应用实际监听 9090）
+EXPOSE 9090
 
 # 设置环境变量 - 针对银河麒麟系统优化
 ENV MYSQL_HOST=mysql \
@@ -83,7 +85,7 @@ ENV MYSQL_HOST=mysql \
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8081/health || exit 1
+    CMD curl -f http://localhost:9090/health || exit 1
 
 # 切换到非root用户
 USER appuser

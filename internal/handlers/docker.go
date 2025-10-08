@@ -61,6 +61,10 @@ func PullImage(c *gin.Context) {
 // @Success 200 {object} utils.Response
 // @Router /docker/images [get]
 func ListImages(c *gin.Context) {
+	if !services.IsDockerAvailable() {
+		utils.ResponseError(c, 503, "Docker服务不可用")
+		return
+	}
 	images, err := services.ListDockerImages()
 	if err != nil {
 		utils.ResponseError(c, 500, "获取镜像失败: "+err.Error())
@@ -81,6 +85,10 @@ func GetImageByID(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		utils.ResponseError(c, 400, "无效的镜像ID")
+		return
+	}
+	if !services.IsDockerAvailable() {
+		utils.ResponseError(c, 503, "Docker服务不可用")
 		return
 	}
 
@@ -107,6 +115,10 @@ func DeleteImage(c *gin.Context) {
 		utils.ResponseError(c, 400, "无效的镜像ID")
 		return
 	}
+	if !services.IsDockerAvailable() {
+		utils.ResponseError(c, 503, "Docker服务不可用")
+		return
+	}
 
 	if err := services.DeleteDockerImage(id); err != nil {
 		utils.ResponseError(c, 500, "删除镜像失败: "+err.Error())
@@ -130,6 +142,10 @@ func TagImage(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		utils.ResponseError(c, 400, "无效的镜像ID")
+		return
+	}
+	if !services.IsDockerAvailable() {
+		utils.ResponseError(c, 503, "Docker服务不可用")
 		return
 	}
 

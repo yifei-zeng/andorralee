@@ -3,7 +3,9 @@ package services
 import (
 	"andorralee/internal/config"
 	"context"
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
@@ -12,17 +14,23 @@ import (
 
 // ContainerInfo 容器信息结构体
 type ContainerInfo struct {
-	ID      string            `json:"id"`
-	Name    string            `json:"name"`
-	Image   string            `json:"image"`
-	Status  string            `json:"status"`
-	Ports   map[string]string `json:"ports"`
-	Created string            `json:"created"`
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Image       string            `json:"image"`
+	Status      string            `json:"status"`
+	Ports       map[string]string `json:"ports"`
+	PortsPretty []string          `json:"ports_pretty,omitempty"`
+	IP          string            `json:"ip,omitempty"`
+	Networks    map[string]string `json:"networks,omitempty"`
+	Created     string            `json:"created"`
 }
 
 // StartContainer 启动容器
 func StartContainer(image, name string, portMap, envVars map[string]string) (string, error) {
 	cli := config.DockerCli
+	if cli == nil {
+		return "", fmt.Errorf("Docker客户端未初始化")
+	}
 
 	// 转换端口映射
 	hostConfig := &container.HostConfig{}
@@ -63,13 +71,43 @@ func StartContainer(image, name string, portMap, envVars map[string]string) (str
 // StopContainer 停止容器
 func StopContainer(containerID string) error {
 	cli := config.DockerCli
+	if cli == nil {
+		return fmt.Errorf("Docker客户端未初始化")
+	}
 	timeout := 10
 	return cli.ContainerStop(context.Background(), containerID, container.StopOptions{Timeout: &timeout})
+}
+
+// StartExistingContainer 启动已存在的容器
+func StartExistingContainer(containerID string) error {
+	cli := config.DockerCli
+	if cli == nil {
+		return fmt.Errorf("Docker客户端未初始化")
+	}
+	return cli.ContainerStart(context.Background(), containerID, container.StartOptions{})
+}
+
+// RestartContainer 重启容器
+func RestartContainer(containerID string, timeoutSeconds int) error {
+	cli := config.DockerCli
+	if cli == nil {
+		return fmt.Errorf("Docker客户端未初始化")
+	}
+	// 与 StopOptions 复用超时设置
+	if timeoutSeconds <= 0 {
+		timeoutSeconds = 10
+	}
+	to := timeoutSeconds
+	// Docker SDK 的 Restart 接口在新版中位于 ContainerRestart，参数类型为 StopOptions
+	return cli.ContainerRestart(context.Background(), containerID, container.StopOptions{Timeout: &to})
 }
 
 // GetContainerLogs 获取容器日志
 func GetContainerLogs(containerID string) (string, error) {
 	cli := config.DockerCli
+	if cli == nil {
+		return "", fmt.Errorf("Docker客户端未初始化")
+	}
 	reader, err := cli.ContainerLogs(
 		context.Background(),
 		containerID,
@@ -96,31 +134,70 @@ func GetContainerLogs(containerID string) (string, error) {
 // GetContainerInfo 获取容器详细信息
 func GetContainerInfo(containerID string) (*ContainerInfo, error) {
 	cli := config.DockerCli
+	if cli == nil {
+		return nil, fmt.Errorf("Docker客户端未初始化")
+	}
 	info, err := cli.ContainerInspect(context.Background(), containerID)
 	if err != nil {
 		return nil, err
 	}
 
 	ports := make(map[string]string)
+	portsPretty := make([]string, 0)
 	for containerPort, bindings := range info.HostConfig.PortBindings {
 		if len(bindings) > 0 {
 			ports[containerPort.Port()] = bindings[0].HostPort
+			// 简单协议推断
+			proto := "tcp"
+			switch containerPort.Port() {
+			case "22":
+				proto = "ssh"
+			case "21":
+				proto = "ftp"
+			case "23":
+				proto = "telnet"
+			case "80":
+				proto = "http"
+			case "443":
+				proto = "https"
+			default:
+				proto = strings.ToLower(containerPort.Proto())
+			}
+			portsPretty = append(portsPretty, bindings[0].HostPort+" "+proto)
+		}
+	}
+
+	// 网络与 IP
+	networks := map[string]string{}
+	var primaryIP string
+	if info.NetworkSettings != nil {
+		for name, cfg := range info.NetworkSettings.Networks {
+			networks[name] = cfg.IPAddress
+			if primaryIP == "" && cfg.IPAddress != "" {
+				primaryIP = cfg.IPAddress
+			}
 		}
 	}
 
 	return &ContainerInfo{
-		ID:      info.ID,
-		Name:    info.Name,
-		Image:   info.Config.Image,
-		Status:  info.State.Status,
-		Ports:   ports,
-		Created: info.Created,
+		ID:          info.ID,
+		Name:        info.Name,
+		Image:       info.Config.Image,
+		Status:      info.State.Status,
+		Ports:       ports,
+		PortsPretty: portsPretty,
+		IP:          primaryIP,
+		Networks:    networks,
+		Created:     info.Created,
 	}, nil
 }
 
 // ListContainers 列出所有容器
 func ListContainers() ([]ContainerInfo, error) {
 	cli := config.DockerCli
+	if cli == nil {
+		return nil, fmt.Errorf("Docker客户端未初始化")
+	}
 	containers, err := cli.ContainerList(context.Background(), container.ListOptions{All: true})
 	if err != nil {
 		return nil, err
