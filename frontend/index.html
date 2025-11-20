@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AndorraLee 蜜罐管理系统</title>
+    <link rel="stylesheet" href="/frontend/style.css">
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fas fa-shield-alt"></i> AndorraLee
+            </div>
+            <nav class="nav-menu">
+                <a href="#" data-route="dashboard" class="nav-item active"><i class="fas fa-tachometer-alt"></i> 仪表盘</a>
+                <a href="#" data-route="containers" class="nav-item"><i class="fas fa-docker"></i> 容器管理</a>
+                <a href="#" data-route="ports" class="nav-item"><i class="fas fa-network-wired"></i> 端口管理</a>
+                <a href="#" data-route="malware" class="nav-item"><i class="fas fa-virus"></i> 病毒检测</a>
+                <a href="#" data-route="logs" class="nav-item"><i class="fas fa-file-alt"></i> 日志审计</a>
+                <a href="#" data-route="threats" class="nav-item"><i class="fas fa-skull-crossbones"></i> 威胁情报</a>
+                <a href="#" data-route="rules" class="nav-item"><i class="fas fa-gavel"></i> 安全规则</a>
+                <a href="#" data-route="settings" class="nav-item"><i class="fas fa-cogs"></i> 系统设置</a>
+            </nav>
+            <div class="sidebar-footer">
+                <div id="system-status" class="status-indicator">
+                    <span class="dot"></span> 系统状态检测中...
+                </div>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <header class="top-bar">
+                <h2 id="page-title">仪表盘</h2>
+                <div class="top-actions">
+                    <button id="refresh-btn" class="btn btn-sm btn-outline"><i class="fas fa-sync-alt"></i> 刷新</button>
+                    <span id="current-time"></span>
+                </div>
+            </header>
+            
+            <div id="view-container" class="view-container">
+                <!-- 动态内容将在这里渲染 -->
+                <div class="loading">加载中...</div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 全局提示框 -->
+    <div id="toast-container"></div>
+
+    <script src="/frontend/app.js"></script>
+</body>
+</html>
