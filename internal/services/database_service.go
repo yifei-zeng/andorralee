@@ -5,6 +5,7 @@ import (
 	"andorralee/internal/repositories"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -102,7 +103,36 @@ func (s *MySQLService) SaveScanResult(result *repositories.ScanResult) error {
 		return errors.New("MySQL数据库未初始化")
 	}
 	result.ScanTime = time.Now()
-	return s.db.Create(result).Error
+	err := s.db.Create(result).Error
+	if err != nil {
+		// 处理唯一键冲突（uk_file_hash），改为查询并返回已有记录ID
+		if strings.Contains(strings.ToLower(err.Error()), "duplicate entry") && strings.Contains(err.Error(), "uk_file_hash") {
+			if existing, getErr := s.GetScanResult(result.FileHash); getErr == nil && existing != nil {
+				// 尝试用最新信息更新已有记录（非关键字段）
+				_ = s.UpdateScanResult(existing.ID, map[string]interface{}{
+					"file_name":        result.FileName,
+					"file_size":        result.FileSize,
+					"file_path":        result.FilePath,
+					"md5_hash":         result.MD5Hash,
+					"scan_time":        time.Now(),
+					"status":           result.Status,
+					"is_infected":      result.IsInfected,
+					"threat_level":     result.ThreatLevel,
+					"detection_count":  result.DetectionCount,
+					"scan_duration_ms": result.ScanDuration,
+					"source_ip":        result.SourceIP,
+					"user_agent":       result.UserAgent,
+				})
+				result.ID = existing.ID
+				fmt.Printf("数据库已存在相同hash，复用记录ID = %d\n", result.ID)
+				return nil
+			}
+		}
+		fmt.Printf("数据库Create失败: %v\n", err)
+		return err
+	}
+	fmt.Printf("数据库Create成功，result.ID = %d\n", result.ID)
+	return nil
 }
 
 func (s *MySQLService) SaveDetectionResult(detection *repositories.DetectionResult) error {
@@ -565,7 +595,7 @@ func InitDefaultMalwareSignatures(dbService DatabaseService) error {
 		Name:        "EICAR Test String",
 		Pattern:     "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*",
 		Type:        "string",
-		Severity:    "low",
+		Severity:    "medium",
 		Description: "EICAR反病毒测试文件标准签名",
 		IsActive:    true,
 	}
@@ -586,6 +616,38 @@ func InitDefaultMalwareSignatures(dbService DatabaseService) error {
 			Type:        "hash",
 			Severity:    "high",
 			Description: "Mimikatz密码提取工具MD5哈希",
+			IsActive:    true,
+		},
+		{
+			Name:        "Emotet Loader",
+			Pattern:     "0f061b0bc225b0c8802b0d1c45015b96b5d93d3536bc3a1e9bdfb1ef82b57c0b",
+			Type:        "hash",
+			Severity:    "high",
+			Description: "Emotet木马常见加载器哈希",
+			IsActive:    true,
+		},
+		{
+			Name:        "Cobalt Strike Beacon",
+			Pattern:     "db349b97c37d22f5ea1d1841e3c89eb4",
+			Type:        "hash",
+			Severity:    "high",
+			Description: "Cobalt Strike Beacon 样本 MD5",
+			IsActive:    true,
+		},
+		{
+			Name:        "PHP WebShell Eval",
+			Pattern:     "<?php eval(base64_decode(",
+			Type:        "string",
+			Severity:    "medium",
+			Description: "常见PHP WebShell 入口片段",
+			IsActive:    true,
+		},
+		{
+			Name:        "PowerShell Encoded Loader",
+			Pattern:     "powershell.exe -enc",
+			Type:        "string",
+			Severity:    "medium",
+			Description: "常见PowerShell编码加载器命令",
 			IsActive:    true,
 		},
 	}

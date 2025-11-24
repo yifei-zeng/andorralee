@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/docker/docker/client"
 	dameng "github.com/godoes/gorm-dameng"
@@ -167,8 +168,9 @@ func InitTables() error {
 		&repositories.DockerImageLog{},
 		&repositories.ContainerLogSegment{},
 		&repositories.DockerContainer{},
-		&repositories.HeadlingAuthLog{},
+		&repositories.HeraldingAuthLog{},
 		&repositories.CowrieLog{},
+		&repositories.MySQLHoneypotLog{},
 		&repositories.MalwareSignature{},
 		// 先迁移攻击事件，再迁移会话，避免外键顺序问题
 		&repositories.AttackEvent{},
@@ -180,6 +182,11 @@ func InitTables() error {
 	)
 
 	if err != nil {
+		// 若为 GORM 在迁移期间尝试删除 attack_session.uk_session_id 导致的外键依赖错误，降级为告警并继续
+		if strings.Contains(err.Error(), "Cannot drop index 'uk_session_id'") {
+			fmt.Println("警告: 检测到 uk_session_id 被外键依赖，保持现有索引并继续")
+			return nil
+		}
 		fmt.Println("MySQL数据库表初始化失败: " + err.Error())
 		return err
 	}
@@ -206,7 +213,7 @@ func InitDamengTables() error {
 		&repositories.DockerImageLog{},
 		&repositories.ContainerLogSegment{},
 		&repositories.DockerContainer{},
-		&repositories.HeadlingAuthLog{},
+		&repositories.HeraldingAuthLog{},
 		&repositories.CowrieLog{},
 		&repositories.MalwareSignature{},
 		&repositories.ScanResult{},
