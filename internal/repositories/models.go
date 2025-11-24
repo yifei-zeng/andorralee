@@ -169,8 +169,8 @@ func (DockerContainer) TableName() string {
 	return "docker_container"
 }
 
-// HeadlingAuthLog Headling认证日志模型
-type HeadlingAuthLog struct {
+// HeraldingAuthLog Heralding认证日志模型
+type HeraldingAuthLog struct {
 	ID              uint      `json:"id" gorm:"primaryKey"`
 	Timestamp       time.Time `json:"timestamp" gorm:"type:datetime(6);not null;comment:捕获到认证行为的时间戳"`
 	AuthID          string    `json:"auth_id" gorm:"size:36;not null;uniqueIndex;comment:此次认证行为的唯一ID"`
@@ -188,8 +188,8 @@ type HeadlingAuthLog struct {
 	CreatedAt       time.Time `json:"created_at" gorm:"not null;comment:记录创建时间"`
 }
 
-// HeadlingAuthStatistics Headling认证统计模型
-type HeadlingAuthStatistics struct {
+// HeraldingAuthStatistics Heralding认证统计模型
+type HeraldingAuthStatistics struct {
 	LogDate         string    `json:"log_date"`
 	Protocol        string    `json:"protocol"`
 	TotalAttempts   int       `json:"total_attempts"`
@@ -212,8 +212,8 @@ type AttackerIPStatistics struct {
 	AttackDurationMinutes int       `json:"attack_duration_minutes"`
 }
 
-func (HeadlingAuthLog) TableName() string {
-	return "headling_auth_log"
+func (HeraldingAuthLog) TableName() string {
+	return "heralding_auth_log"
 }
 
 // CowrieLog Cowrie蜜罐日志模型
@@ -285,6 +285,38 @@ func (CowrieLog) TableName() string {
 	return "cowrie_log"
 }
 
+// MySQLHoneypotLog MySQL蜜罐日志模型
+type MySQLHoneypotLog struct {
+	ID              uint      `json:"id" gorm:"primaryKey"`
+	EventID         string    `json:"event_id" gorm:"size:64;index;comment:事件唯一ID"`
+	EventTime       time.Time `json:"event_time" gorm:"type:datetime(6);not null;comment:事件时间"`
+	ContainerID     string    `json:"container_id" gorm:"size:64;index;comment:关联容器ID"`
+	ContainerName   string    `json:"container_name" gorm:"size:100;comment:容器名称"`
+	SourceIP        string    `json:"source_ip" gorm:"size:45;index;comment:攻击源IP"`
+	SourcePort      uint      `json:"source_port" gorm:"comment:攻击源端口"`
+	DestinationIP   string    `json:"destination_ip" gorm:"size:45;comment:目标IP"`
+	DestinationPort uint      `json:"destination_port" gorm:"comment:目标端口"`
+	Username        string    `json:"username" gorm:"size:255;index;comment:登录用户名"`
+	Password        string    `json:"password" gorm:"size:255;comment:登录密码"`
+	DatabaseName    string    `json:"database_name" gorm:"size:255;comment:访问的数据库"`
+	Query           string    `json:"query" gorm:"type:text;comment:执行的SQL语句"`
+	ErrorCode       string    `json:"error_code" gorm:"size:50;comment:错误码"`
+	RawLog          string    `json:"raw_log" gorm:"type:text;comment:原始日志"`
+	CreatedAt       time.Time `json:"created_at" gorm:"not null;comment:记录创建时间"`
+}
+
+// MySQLHoneypotStatistics MySQL蜜罐统计视图
+type MySQLHoneypotStatistics struct {
+	Query     string    `json:"query"`
+	Attempts  int       `json:"attempts"`
+	UniqueIPs int       `json:"unique_ips"`
+	LastSeen  time.Time `json:"last_seen"`
+}
+
+func (MySQLHoneypotLog) TableName() string {
+	return "mysql_honeypot_log"
+}
+
 // MalwareSignature 病毒特征模型
 type MalwareSignature struct {
 	ID          uint      `json:"id" gorm:"primaryKey"`
@@ -301,7 +333,7 @@ type MalwareSignature struct {
 // ScanResult 扫描结果模型
 type ScanResult struct {
 	ID             uint      `json:"id" gorm:"primaryKey"`
-	FileHash       string    `json:"file_hash" gorm:"size:64;not null;index;comment:文件SHA256哈希"`
+	FileHash       string    `json:"file_hash" gorm:"size:64;not null;uniqueIndex:uk_file_hash;comment:文件SHA256哈希"`
 	MD5Hash        string    `json:"md5_hash" gorm:"size:32;comment:文件MD5哈希"`
 	FileName       string    `json:"file_name" gorm:"size:255;not null;comment:文件名"`
 	FileSize       int64     `json:"file_size" gorm:"not null;comment:文件大小(字节)"`
@@ -309,7 +341,7 @@ type ScanResult struct {
 	IsInfected     bool      `json:"is_infected" gorm:"not null;comment:是否感染"`
 	ThreatLevel    string    `json:"threat_level" gorm:"size:20;comment:威胁等级"`
 	DetectionCount int       `json:"detection_count" gorm:"default:0;comment:检测到的威胁数量"`
-	ScanDuration   int64     `json:"scan_duration_ms" gorm:"comment:扫描耗时(毫秒)"`
+	ScanDuration   int64     `json:"scan_duration_ms" gorm:"column:scan_duration_ms;comment:扫描耗时(毫秒)"`
 	SourceIP       string    `json:"source_ip" gorm:"size:45;comment:上传者IP"`
 	UserAgent      string    `json:"user_agent" gorm:"type:text;comment:用户代理"`
 	// 新增字段：上传存储路径与状态（uploaded/scanning/clean/infected/failed）
@@ -334,7 +366,7 @@ type DetectionResult struct {
 // AttackSession 攻击会话模型
 type AttackSession struct {
 	ID              uint       `json:"id" gorm:"primaryKey"`
-	SessionID       string     `json:"session_id" gorm:"size:36;not null;uniqueIndex;comment:会话唯一ID"`
+	SessionID       string     `json:"session_id" gorm:"size:36;not null;uniqueIndex:uk_session_id;comment:会话唯一ID"`
 	SourceIP        string     `json:"source_ip" gorm:"size:45;not null;index;comment:攻击者IP"`
 	SourcePort      uint       `json:"source_port" gorm:"comment:攻击者端口"`
 	DestinationIP   string     `json:"destination_ip" gorm:"size:45;not null;comment:目标IP"`
