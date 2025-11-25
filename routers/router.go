@@ -42,7 +42,8 @@ func SetupRouter() *gin.Engine {
 			c.JSON(404, gin.H{"error": "Not Found"})
 			return
 		}
-		c.File("./static/index.html")
+		// 回退到前端入口
+		c.File("./frontend/index.html")
 	})
 
 	// 添加简单健康检查端点（用于Docker健康检查）
@@ -145,25 +146,25 @@ func SetupRouter() *gin.Engine {
 			data.GET("/name", handlers.GetDataByName)
 		}
 
-		// ------------------------------ Headling认证日志接口 ------------------------------
-		headling := api.Group("/headling")
+		// ------------------------------ Heralding认证日志接口 ------------------------------
+		heralding := api.Group("/heralding")
 		{
 			// 日志拉取和管理
-			headling.POST("/pull-logs", handlers.PullHeadlingLogs)                                   // 拉取认证日志
-			headling.GET("/logs", handlers.GetAllHeadlingLogs)                                       // 获取所有日志
-			headling.GET("/logs/:id", handlers.GetHeadlingLogByID)                                   // 根据ID获取日志
-			headling.GET("/logs/container/:container_id", handlers.GetHeadlingLogsByContainer)       // 根据容器ID获取日志
-			headling.GET("/logs/source-ip/:source_ip", handlers.GetHeadlingLogsBySourceIP)           // 根据源IP获取日志
-			headling.GET("/logs/protocol/:protocol", handlers.GetHeadlingLogsByProtocol)             // 根据协议获取日志
-			headling.GET("/logs/time-range", handlers.GetHeadlingLogsByTimeRange)                    // 根据时间范围获取日志
-			headling.DELETE("/logs/container/:container_id", handlers.DeleteHeadlingLogsByContainer) // 删除容器相关日志
+			heralding.POST("/pull-logs", handlers.PullHeraldingLogs)                                   // 拉取认证日志
+			heralding.GET("/logs", handlers.GetAllHeraldingLogs)                                       // 获取所有日志
+			heralding.GET("/logs/:id", handlers.GetHeraldingLogByID)                                   // 根据ID获取日志
+			heralding.GET("/logs/container/:container_id", handlers.GetHeraldingLogsByContainer)       // 根据容器ID获取日志
+			heralding.GET("/logs/source-ip/:source_ip", handlers.GetHeraldingLogsBySourceIP)           // 根据源IP获取日志
+			heralding.GET("/logs/protocol/:protocol", handlers.GetHeraldingLogsByProtocol)             // 根据协议获取日志
+			heralding.GET("/logs/time-range", handlers.GetHeraldingLogsByTimeRange)                    // 根据时间范围获取日志
+			heralding.DELETE("/logs/container/:container_id", handlers.DeleteHeraldingLogsByContainer) // 删除容器相关日志
 
 			// 统计和分析
-			headling.GET("/statistics", handlers.GetHeadlingStatistics)            // 获取统计信息
-			headling.GET("/attacker-statistics", handlers.GetAttackerIPStatistics) // 获取攻击者IP统计
-			headling.GET("/top-attackers", handlers.GetTopAttackers)               // 获取顶级攻击者
-			headling.GET("/top-usernames", handlers.GetTopUsernames)               // 获取常用用户名
-			headling.GET("/top-passwords", handlers.GetTopPasswords)               // 获取常用密码
+			heralding.GET("/statistics", handlers.GetHeraldingStatistics)           // 获取统计信息
+			heralding.GET("/attacker-statistics", handlers.GetAttackerIPStatistics) // 获取攻击者IP统计
+			heralding.GET("/top-attackers", handlers.GetTopAttackers)               // 获取顶级攻击者
+			heralding.GET("/top-usernames", handlers.GetTopUsernames)               // 获取常用用户名
+			heralding.GET("/top-passwords", handlers.GetTopPasswords)               // 获取常用密码
 		}
 
 		// ------------------------------ Cowrie蜜罐日志接口 ------------------------------
@@ -190,6 +191,20 @@ func SetupRouter() *gin.Engine {
 			cowrie.GET("/top-usernames", handlers.GetCowrieTopUsernames)         // 获取常用用户名
 			cowrie.GET("/top-passwords", handlers.GetCowrieTopPasswords)         // 获取常用密码
 			cowrie.GET("/top-fingerprints", handlers.GetCowrieTopFingerprints)   // 获取常用指纹
+		}
+
+		// ------------------------------ MySQL蜜罐日志接口 ------------------------------
+		mysqlHoneypot := api.Group("/mysql-honeypot")
+		{
+			mysqlHoneypot.POST("/pull-logs", handlers.PullMySQLHoneypotLogs)                                   // 拉取日志
+			mysqlHoneypot.GET("/logs", handlers.GetAllMySQLHoneypotLogs)                                       // 获取所有日志
+			mysqlHoneypot.GET("/logs/:id", handlers.GetMySQLHoneypotLogByID)                                   // 根据ID获取日志
+			mysqlHoneypot.GET("/logs/container/:container_id", handlers.GetMySQLHoneypotLogsByContainer)       // 根据容器获取日志
+			mysqlHoneypot.GET("/logs/source-ip/:source_ip", handlers.GetMySQLHoneypotLogsBySourceIP)           // 根据源IP获取日志
+			mysqlHoneypot.GET("/logs/username/:username", handlers.GetMySQLHoneypotLogsByUsername)             // 根据用户名获取日志
+			mysqlHoneypot.GET("/logs/time-range", handlers.GetMySQLHoneypotLogsByTimeRange)                    // 根据时间范围获取日志
+			mysqlHoneypot.DELETE("/logs/container/:container_id", handlers.DeleteMySQLHoneypotLogsByContainer) // 删除容器日志
+			mysqlHoneypot.GET("/query-statistics", handlers.GetMySQLHoneypotQueryStatistics)                   // SQL查询统计
 		}
 
 		// ------------------------------ 容器实例管理接口 ------------------------------

@@ -597,28 +597,28 @@ func (r *MySQLDockerContainerRepo) UpdateStatus(containerID string, status strin
 		}).Error
 }
 
-// -------------------- Headling认证日志仓库 --------------------
+// -------------------- Heralding认证日志仓库 --------------------
 
-// MySQLHeadlingAuthLogRepo Headling认证日志MySQL仓库
-type MySQLHeadlingAuthLogRepo struct {
+// MySQLHeraldingAuthLogRepo Heralding认证日志MySQL仓库
+type MySQLHeraldingAuthLogRepo struct {
 	DB *gorm.DB
 }
 
-// NewMySQLHeadlingAuthLogRepo 创建Headling认证日志MySQL仓库
-func NewMySQLHeadlingAuthLogRepo(db *gorm.DB) HeadlingAuthLogRepository {
-	return &MySQLHeadlingAuthLogRepo{DB: db}
+// NewMySQLHeraldingAuthLogRepo 创建Heralding认证日志MySQL仓库
+func NewMySQLHeraldingAuthLogRepo(db *gorm.DB) HeraldingAuthLogRepository {
+	return &MySQLHeraldingAuthLogRepo{DB: db}
 }
 
-// List 获取所有Headling认证日志
-func (r *MySQLHeadlingAuthLogRepo) List() ([]HeadlingAuthLog, error) {
-	var logs []HeadlingAuthLog
+// List 获取所有Heralding认证日志
+func (r *MySQLHeraldingAuthLogRepo) List() ([]HeraldingAuthLog, error) {
+	var logs []HeraldingAuthLog
 	result := r.DB.Order("timestamp DESC").Find(&logs)
 	return logs, result.Error
 }
 
-// GetByID 根据ID获取Headling认证日志
-func (r *MySQLHeadlingAuthLogRepo) GetByID(id uint) (*HeadlingAuthLog, error) {
-	var log HeadlingAuthLog
+// GetByID 根据ID获取Heralding认证日志
+func (r *MySQLHeraldingAuthLogRepo) GetByID(id uint) (*HeraldingAuthLog, error) {
+	var log HeraldingAuthLog
 	result := r.DB.First(&log, id)
 	if result.Error != nil {
 		return nil, result.Error
@@ -626,10 +626,10 @@ func (r *MySQLHeadlingAuthLogRepo) GetByID(id uint) (*HeadlingAuthLog, error) {
 	return &log, nil
 }
 
-// GetByAuthID 根据认证ID获取Headling认证日志
-func (r *MySQLHeadlingAuthLogRepo) GetByAuthID(authID string) (*HeadlingAuthLog, error) {
+// GetByAuthID 根据认证ID获取Heralding认证日志
+func (r *MySQLHeraldingAuthLogRepo) GetByAuthID(authID string) (*HeraldingAuthLog, error) {
 	// 使用 Find + RowsAffected 避免 gorm.ErrRecordNotFound 被记录为错误日志
-	var log HeadlingAuthLog
+	var log HeraldingAuthLog
 	result := r.DB.Where("auth_id = ?", authID).Limit(1).Find(&log)
 	if result.Error != nil {
 		return nil, result.Error
@@ -641,49 +641,62 @@ func (r *MySQLHeadlingAuthLogRepo) GetByAuthID(authID string) (*HeadlingAuthLog,
 	return &log, nil
 }
 
-// GetBySessionID 根据会话ID获取Headling认证日志
-func (r *MySQLHeadlingAuthLogRepo) GetBySessionID(sessionID string) ([]HeadlingAuthLog, error) {
-	var logs []HeadlingAuthLog
+// GetBySessionID 根据会话ID获取Heralding认证日志
+func (r *MySQLHeraldingAuthLogRepo) GetBySessionID(sessionID string) ([]HeraldingAuthLog, error) {
+	var logs []HeraldingAuthLog
 	result := r.DB.Where("session_id = ?", sessionID).Order("timestamp ASC").Find(&logs)
 	return logs, result.Error
 }
 
-// GetBySourceIP 根据源IP获取Headling认证日志
-func (r *MySQLHeadlingAuthLogRepo) GetBySourceIP(sourceIP string) ([]HeadlingAuthLog, error) {
-	var logs []HeadlingAuthLog
+// GetBySourceIP 根据源IP获取Heralding认证日志
+func (r *MySQLHeraldingAuthLogRepo) GetBySourceIP(sourceIP string) ([]HeraldingAuthLog, error) {
+	var logs []HeraldingAuthLog
 	result := r.DB.Where("source_ip = ?", sourceIP).Order("timestamp DESC").Find(&logs)
 	return logs, result.Error
 }
 
-// GetByContainerID 根据容器ID获取Headling认证日志
-func (r *MySQLHeadlingAuthLogRepo) GetByContainerID(containerID string) ([]HeadlingAuthLog, error) {
-	var logs []HeadlingAuthLog
+// GetByContainerID 根据容器ID获取Heralding认证日志
+func (r *MySQLHeraldingAuthLogRepo) GetByContainerID(containerID string) ([]HeraldingAuthLog, error) {
+	var logs []HeraldingAuthLog
 	result := r.DB.Where("container_id = ?", containerID).Order("timestamp DESC").Find(&logs)
 	return logs, result.Error
 }
 
-// GetByProtocol 根据协议获取Headling认证日志
-func (r *MySQLHeadlingAuthLogRepo) GetByProtocol(protocol string) ([]HeadlingAuthLog, error) {
-	var logs []HeadlingAuthLog
+// GetLatestByContainerID 获取指定容器最新一条Heralding日志
+func (r *MySQLHeraldingAuthLogRepo) GetLatestByContainerID(containerID string) (*HeraldingAuthLog, error) {
+	var log HeraldingAuthLog
+	result := r.DB.Where("container_id = ?", containerID).Order("timestamp DESC").Limit(1).Find(&log)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, nil
+	}
+	return &log, nil
+}
+
+// GetByProtocol 根据协议获取Heralding认证日志
+func (r *MySQLHeraldingAuthLogRepo) GetByProtocol(protocol string) ([]HeraldingAuthLog, error) {
+	var logs []HeraldingAuthLog
 	result := r.DB.Where("protocol = ?", protocol).Order("timestamp DESC").Find(&logs)
 	return logs, result.Error
 }
 
-// GetByTimeRange 根据时间范围获取Headling认证日志
-func (r *MySQLHeadlingAuthLogRepo) GetByTimeRange(startTime, endTime time.Time) ([]HeadlingAuthLog, error) {
-	var logs []HeadlingAuthLog
+// GetByTimeRange 根据时间范围获取Heralding认证日志
+func (r *MySQLHeraldingAuthLogRepo) GetByTimeRange(startTime, endTime time.Time) ([]HeraldingAuthLog, error) {
+	var logs []HeraldingAuthLog
 	result := r.DB.Where("timestamp BETWEEN ? AND ?", startTime, endTime).Order("timestamp DESC").Find(&logs)
 	return logs, result.Error
 }
 
-// Create 创建Headling认证日志
-func (r *MySQLHeadlingAuthLogRepo) Create(log *HeadlingAuthLog) error {
+// Create 创建Heralding认证日志
+func (r *MySQLHeraldingAuthLogRepo) Create(log *HeraldingAuthLog) error {
 	log.CreatedAt = time.Now()
 	return r.DB.Create(log).Error
 }
 
-// CreateBatch 批量创建Headling认证日志
-func (r *MySQLHeadlingAuthLogRepo) CreateBatch(logs []HeadlingAuthLog) error {
+// CreateBatch 批量创建Heralding认证日志
+func (r *MySQLHeraldingAuthLogRepo) CreateBatch(logs []HeraldingAuthLog) error {
 	now := time.Now()
 	for i := range logs {
 		logs[i].CreatedAt = now
@@ -691,46 +704,46 @@ func (r *MySQLHeadlingAuthLogRepo) CreateBatch(logs []HeadlingAuthLog) error {
 	return r.DB.CreateInBatches(logs, 100).Error
 }
 
-// Update 更新Headling认证日志
-func (r *MySQLHeadlingAuthLogRepo) Update(log *HeadlingAuthLog) error {
+// Update 更新Heralding认证日志
+func (r *MySQLHeraldingAuthLogRepo) Update(log *HeraldingAuthLog) error {
 	return r.DB.Save(log).Error
 }
 
-// Delete 删除Headling认证日志
-func (r *MySQLHeadlingAuthLogRepo) Delete(id uint) error {
-	return r.DB.Delete(&HeadlingAuthLog{}, id).Error
+// Delete 删除Heralding认证日志
+func (r *MySQLHeraldingAuthLogRepo) Delete(id uint) error {
+	return r.DB.Delete(&HeraldingAuthLog{}, id).Error
 }
 
 // DeleteByContainerID 根据容器ID删除所有相关认证日志
-func (r *MySQLHeadlingAuthLogRepo) DeleteByContainerID(containerID string) error {
-	return r.DB.Where("container_id = ?", containerID).Delete(&HeadlingAuthLog{}).Error
+func (r *MySQLHeraldingAuthLogRepo) DeleteByContainerID(containerID string) error {
+	return r.DB.Where("container_id = ?", containerID).Delete(&HeraldingAuthLog{}).Error
 }
 
 // GetStatistics 获取认证统计信息
-func (r *MySQLHeadlingAuthLogRepo) GetStatistics() ([]HeadlingAuthStatistics, error) {
-	var stats []HeadlingAuthStatistics
-	result := r.DB.Table("v_headling_auth_statistics").Find(&stats)
+func (r *MySQLHeraldingAuthLogRepo) GetStatistics() ([]HeraldingAuthStatistics, error) {
+	var stats []HeraldingAuthStatistics
+	result := r.DB.Table("v_heralding_auth_statistics").Find(&stats)
 	return stats, result.Error
 }
 
 // GetAttackerIPStatistics 获取攻击者IP统计信息
-func (r *MySQLHeadlingAuthLogRepo) GetAttackerIPStatistics() ([]AttackerIPStatistics, error) {
+func (r *MySQLHeraldingAuthLogRepo) GetAttackerIPStatistics() ([]AttackerIPStatistics, error) {
 	var stats []AttackerIPStatistics
 	result := r.DB.Table("v_attacker_ip_statistics").Find(&stats)
 	return stats, result.Error
 }
 
 // GetTopAttackers 获取前N个攻击者
-func (r *MySQLHeadlingAuthLogRepo) GetTopAttackers(limit int) ([]AttackerIPStatistics, error) {
+func (r *MySQLHeraldingAuthLogRepo) GetTopAttackers(limit int) ([]AttackerIPStatistics, error) {
 	var stats []AttackerIPStatistics
 	result := r.DB.Table("v_attacker_ip_statistics").Limit(limit).Find(&stats)
 	return stats, result.Error
 }
 
 // GetTopUsernames 获取最常用的用户名
-func (r *MySQLHeadlingAuthLogRepo) GetTopUsernames(limit int) ([]map[string]interface{}, error) {
+func (r *MySQLHeraldingAuthLogRepo) GetTopUsernames(limit int) ([]map[string]interface{}, error) {
 	var results []map[string]interface{}
-	result := r.DB.Table("headling_auth_log").
+	result := r.DB.Table("heralding_auth_log").
 		Select("username, COUNT(*) as count, COUNT(DISTINCT source_ip) as unique_ips").
 		Group("username").
 		Order("count DESC").
@@ -740,9 +753,9 @@ func (r *MySQLHeadlingAuthLogRepo) GetTopUsernames(limit int) ([]map[string]inte
 }
 
 // GetTopPasswords 获取最常用的密码
-func (r *MySQLHeadlingAuthLogRepo) GetTopPasswords(limit int) ([]map[string]interface{}, error) {
+func (r *MySQLHeraldingAuthLogRepo) GetTopPasswords(limit int) ([]map[string]interface{}, error) {
 	var results []map[string]interface{}
-	result := r.DB.Table("headling_auth_log").
+	result := r.DB.Table("heralding_auth_log").
 		Select("password, COUNT(*) as count, COUNT(DISTINCT source_ip) as unique_ips").
 		Group("password").
 		Order("count DESC").
@@ -963,4 +976,125 @@ func (r *MySQLCowrieLogRepo) GetTopFingerprints(limit int) ([]map[string]interfa
 		Limit(limit).
 		Find(&results)
 	return results, result.Error
+}
+
+// -------------------- MySQL蜜罐日志仓库 --------------------
+
+// MySQLMySQLHoneypotLogRepo MySQL蜜罐日志仓库
+type MySQLMySQLHoneypotLogRepo struct {
+	DB *gorm.DB
+}
+
+// NewMySQLMySQLHoneypotLogRepo 创建MySQL蜜罐日志仓库
+func NewMySQLMySQLHoneypotLogRepo(db *gorm.DB) MySQLHoneypotLogRepository {
+	return &MySQLMySQLHoneypotLogRepo{DB: db}
+}
+
+// List 获取所有MySQL蜜罐日志
+func (r *MySQLMySQLHoneypotLogRepo) List() ([]MySQLHoneypotLog, error) {
+	var logs []MySQLHoneypotLog
+	result := r.DB.Order("event_time DESC").Find(&logs)
+	return logs, result.Error
+}
+
+// GetByID 根据ID获取MySQL蜜罐日志
+func (r *MySQLMySQLHoneypotLogRepo) GetByID(id uint) (*MySQLHoneypotLog, error) {
+	var log MySQLHoneypotLog
+	result := r.DB.First(&log, id)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &log, nil
+}
+
+// GetByEventID 根据事件ID获取MySQL蜜罐日志
+func (r *MySQLMySQLHoneypotLogRepo) GetByEventID(eventID string) (*MySQLHoneypotLog, error) {
+	var log MySQLHoneypotLog
+	result := r.DB.Where("event_id = ?", eventID).Limit(1).Find(&log)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, nil
+	}
+	return &log, nil
+}
+
+// GetByContainerID 根据容器ID获取MySQL蜜罐日志
+func (r *MySQLMySQLHoneypotLogRepo) GetByContainerID(containerID string) ([]MySQLHoneypotLog, error) {
+	var logs []MySQLHoneypotLog
+	result := r.DB.Where("container_id = ?", containerID).Order("event_time DESC").Find(&logs)
+	return logs, result.Error
+}
+
+// GetLatestByContainerID 获取指定容器最新日志
+func (r *MySQLMySQLHoneypotLogRepo) GetLatestByContainerID(containerID string) (*MySQLHoneypotLog, error) {
+	var log MySQLHoneypotLog
+	result := r.DB.Where("container_id = ?", containerID).Order("event_time DESC").Limit(1).Find(&log)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, nil
+	}
+	return &log, nil
+}
+
+// GetBySourceIP 根据源IP获取MySQL蜜罐日志
+func (r *MySQLMySQLHoneypotLogRepo) GetBySourceIP(sourceIP string) ([]MySQLHoneypotLog, error) {
+	var logs []MySQLHoneypotLog
+	result := r.DB.Where("source_ip = ?", sourceIP).Order("event_time DESC").Find(&logs)
+	return logs, result.Error
+}
+
+// GetByUsername 根据用户名获取MySQL蜜罐日志
+func (r *MySQLMySQLHoneypotLogRepo) GetByUsername(username string) ([]MySQLHoneypotLog, error) {
+	var logs []MySQLHoneypotLog
+	result := r.DB.Where("username = ?", username).Order("event_time DESC").Find(&logs)
+	return logs, result.Error
+}
+
+// GetByTimeRange 根据时间范围获取MySQL蜜罐日志
+func (r *MySQLMySQLHoneypotLogRepo) GetByTimeRange(startTime, endTime time.Time) ([]MySQLHoneypotLog, error) {
+	var logs []MySQLHoneypotLog
+	result := r.DB.Where("event_time BETWEEN ? AND ?", startTime, endTime).Order("event_time DESC").Find(&logs)
+	return logs, result.Error
+}
+
+// Create 创建MySQL蜜罐日志
+func (r *MySQLMySQLHoneypotLogRepo) Create(log *MySQLHoneypotLog) error {
+	log.CreatedAt = time.Now()
+	return r.DB.Create(log).Error
+}
+
+// CreateBatch 批量创建MySQL蜜罐日志
+func (r *MySQLMySQLHoneypotLogRepo) CreateBatch(logs []MySQLHoneypotLog) error {
+	now := time.Now()
+	for i := range logs {
+		logs[i].CreatedAt = now
+	}
+	return r.DB.CreateInBatches(logs, 100).Error
+}
+
+// Delete 删除MySQL蜜罐日志
+func (r *MySQLMySQLHoneypotLogRepo) Delete(id uint) error {
+	return r.DB.Delete(&MySQLHoneypotLog{}, id).Error
+}
+
+// DeleteByContainerID 根据容器ID删除日志
+func (r *MySQLMySQLHoneypotLogRepo) DeleteByContainerID(containerID string) error {
+	return r.DB.Where("container_id = ?", containerID).Delete(&MySQLHoneypotLog{}).Error
+}
+
+// GetQueryStatistics 获取SQL查询统计
+func (r *MySQLMySQLHoneypotLogRepo) GetQueryStatistics(limit int) ([]MySQLHoneypotStatistics, error) {
+	var stats []MySQLHoneypotStatistics
+	result := r.DB.Table("mysql_honeypot_log").
+		Select("query, COUNT(*) AS attempts, COUNT(DISTINCT source_ip) AS unique_ips, MAX(event_time) AS last_seen").
+		Where("query IS NOT NULL AND query != ''").
+		Group("query").
+		Order("attempts DESC").
+		Limit(limit).
+		Find(&stats)
+	return stats, result.Error
 }

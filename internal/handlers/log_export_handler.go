@@ -13,7 +13,7 @@ import (
 
 // LogExportRequest 日志导出请求
 type LogExportRequest struct {
-	LogType   string    `json:"log_type"` // headling, cowrie, attack, honeytokens
+	LogType   string    `json:"log_type"` // heralding, cowrie, attack, honeytokens
 	Format    string    `json:"format"`   // json, csv
 	StartTime time.Time `json:"start_time"`
 	EndTime   time.Time `json:"end_time"`

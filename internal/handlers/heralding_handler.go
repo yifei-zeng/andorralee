@@ -10,13 +10,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// PullHeadlingLogsRequest 拉取headling日志请求参数
-type PullHeadlingLogsRequest struct {
+// PullHeraldingLogsRequest 拉取heralding日志请求参数
+type PullHeraldingLogsRequest struct {
 	ContainerID string `json:"container_id" binding:"required"` // 容器ID
 }
 
-// HeadlingLogQueryRequest 查询headling日志请求参数
-type HeadlingLogQueryRequest struct {
+// HeraldingLogQueryRequest 查询heralding日志请求参数
+type HeraldingLogQueryRequest struct {
 	ContainerID string `form:"container_id"` // 容器ID
 	SourceIP    string `form:"source_ip"`    // 源IP
 	Protocol    string `form:"protocol"`     // 协议
@@ -25,45 +25,45 @@ type HeadlingLogQueryRequest struct {
 	Limit       int    `form:"limit"`        // 限制数量
 }
 
-// PullHeadlingLogs 拉取headling认证日志
-// @Summary 拉取headling认证日志
-// @Description 从指定容器中拉取headling认证日志并保存到数据库
-// @Tags Headling认证日志
+// PullHeraldingLogs 拉取heralding认证日志
+// @Summary 拉取heralding认证日志
+// @Description 从指定容器中拉取heralding认证日志并保存到数据库
+// @Tags Heralding认证日志
 // @Accept json
 // @Produce json
-// @Param payload body PullHeadlingLogsRequest true "拉取参数"
+// @Param payload body PullHeraldingLogsRequest true "拉取参数"
 // @Success 200 {object} utils.Response
-// @Router /headling/pull-logs [post]
-func PullHeadlingLogs(c *gin.Context) {
-	var req PullHeadlingLogsRequest
+// @Router /heralding/pull-logs [post]
+func PullHeraldingLogs(c *gin.Context) {
+	var req PullHeraldingLogsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ResponseError(c, http.StatusBadRequest, "参数错误: "+err.Error())
 		return
 	}
 
-	service, err := services.NewHeadlingService()
+	service, err := services.NewHeraldingService()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
 		return
 	}
 
-	if err := service.PullHeadlingLogs(req.ContainerID); err != nil {
+	if err := service.PullHeraldingLogs(req.ContainerID); err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "拉取日志失败: "+err.Error())
 		return
 	}
 
-	utils.ResponseSuccess(c, "headling认证日志拉取成功")
+	utils.ResponseSuccess(c, "heralding认证日志拉取成功")
 }
 
-// GetAllHeadlingLogs 获取所有headling认证日志
-// @Summary 获取所有headling认证日志
-// @Description 获取所有headling认证日志记录
-// @Tags Headling认证日志
+// GetAllHeraldingLogs 获取所有heralding认证日志
+// @Summary 获取所有heralding认证日志
+// @Description 获取所有heralding认证日志记录
+// @Tags Heralding认证日志
 // @Produce json
 // @Success 200 {object} utils.Response
-// @Router /headling/logs [get]
-func GetAllHeadlingLogs(c *gin.Context) {
-	service, err := services.NewHeadlingService()
+// @Router /heralding/logs [get]
+func GetAllHeraldingLogs(c *gin.Context) {
+	service, err := services.NewHeraldingService()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
 		return
@@ -78,15 +78,15 @@ func GetAllHeadlingLogs(c *gin.Context) {
 	utils.ResponseSuccess(c, logs)
 }
 
-// GetHeadlingLogByID 根据ID获取headling认证日志
-// @Summary 根据ID获取headling认证日志
-// @Description 根据ID获取指定的headling认证日志记录
-// @Tags Headling认证日志
+// GetHeraldingLogByID 根据ID获取heralding认证日志
+// @Summary 根据ID获取heralding认证日志
+// @Description 根据ID获取指定的heralding认证日志记录
+// @Tags Heralding认证日志
 // @Produce json
 // @Param id path int true "日志ID"
 // @Success 200 {object} utils.Response
-// @Router /headling/logs/{id} [get]
-func GetHeadlingLogByID(c *gin.Context) {
+// @Router /heralding/logs/{id} [get]
+func GetHeraldingLogByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
@@ -94,7 +94,7 @@ func GetHeadlingLogByID(c *gin.Context) {
 		return
 	}
 
-	service, err := services.NewHeadlingService()
+	service, err := services.NewHeraldingService()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
 		return
@@ -109,22 +109,22 @@ func GetHeadlingLogByID(c *gin.Context) {
 	utils.ResponseSuccess(c, log)
 }
 
-// GetHeadlingLogsByContainer 根据容器ID获取认证日志
+// GetHeraldingLogsByContainer 根据容器ID获取认证日志
 // @Summary 根据容器ID获取认证日志
-// @Description 获取指定容器的所有headling认证日志
-// @Tags Headling认证日志
+// @Description 获取指定容器的所有heralding认证日志
+// @Tags Heralding认证日志
 // @Produce json
 // @Param container_id path string true "容器ID"
 // @Success 200 {object} utils.Response
-// @Router /headling/logs/container/{container_id} [get]
-func GetHeadlingLogsByContainer(c *gin.Context) {
+// @Router /heralding/logs/container/{container_id} [get]
+func GetHeraldingLogsByContainer(c *gin.Context) {
 	containerID := c.Param("container_id")
 	if containerID == "" {
 		utils.ResponseError(c, http.StatusBadRequest, "容器ID不能为空")
 		return
 	}
 
-	service, err := services.NewHeadlingService()
+	service, err := services.NewHeraldingService()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
 		return
@@ -139,22 +139,22 @@ func GetHeadlingLogsByContainer(c *gin.Context) {
 	utils.ResponseSuccess(c, logs)
 }
 
-// GetHeadlingLogsBySourceIP 根据源IP获取认证日志
+// GetHeraldingLogsBySourceIP 根据源IP获取认证日志
 // @Summary 根据源IP获取认证日志
-// @Description 获取指定源IP的所有headling认证日志
-// @Tags Headling认证日志
+// @Description 获取指定源IP的所有heralding认证日志
+// @Tags Heralding认证日志
 // @Produce json
 // @Param source_ip path string true "源IP地址"
 // @Success 200 {object} utils.Response
-// @Router /headling/logs/source-ip/{source_ip} [get]
-func GetHeadlingLogsBySourceIP(c *gin.Context) {
+// @Router /heralding/logs/source-ip/{source_ip} [get]
+func GetHeraldingLogsBySourceIP(c *gin.Context) {
 	sourceIP := c.Param("source_ip")
 	if sourceIP == "" {
 		utils.ResponseError(c, http.StatusBadRequest, "源IP不能为空")
 		return
 	}
 
-	service, err := services.NewHeadlingService()
+	service, err := services.NewHeraldingService()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
 		return
@@ -169,22 +169,22 @@ func GetHeadlingLogsBySourceIP(c *gin.Context) {
 	utils.ResponseSuccess(c, logs)
 }
 
-// GetHeadlingLogsByProtocol 根据协议获取认证日志
+// GetHeraldingLogsByProtocol 根据协议获取认证日志
 // @Summary 根据协议获取认证日志
-// @Description 获取指定协议的所有headling认证日志
-// @Tags Headling认证日志
+// @Description 获取指定协议的所有heralding认证日志
+// @Tags Heralding认证日志
 // @Produce json
 // @Param protocol path string true "协议类型"
 // @Success 200 {object} utils.Response
-// @Router /headling/logs/protocol/{protocol} [get]
-func GetHeadlingLogsByProtocol(c *gin.Context) {
+// @Router /heralding/logs/protocol/{protocol} [get]
+func GetHeraldingLogsByProtocol(c *gin.Context) {
 	protocol := c.Param("protocol")
 	if protocol == "" {
 		utils.ResponseError(c, http.StatusBadRequest, "协议不能为空")
 		return
 	}
 
-	service, err := services.NewHeadlingService()
+	service, err := services.NewHeraldingService()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
 		return
@@ -199,16 +199,16 @@ func GetHeadlingLogsByProtocol(c *gin.Context) {
 	utils.ResponseSuccess(c, logs)
 }
 
-// GetHeadlingLogsByTimeRange 根据时间范围获取认证日志
+// GetHeraldingLogsByTimeRange 根据时间范围获取认证日志
 // @Summary 根据时间范围获取认证日志
-// @Description 获取指定时间范围内的headling认证日志
-// @Tags Headling认证日志
+// @Description 获取指定时间范围内的heralding认证日志
+// @Tags Heralding认证日志
 // @Produce json
 // @Param start_time query string true "开始时间(RFC3339格式)"
 // @Param end_time query string true "结束时间(RFC3339格式)"
 // @Success 200 {object} utils.Response
-// @Router /headling/logs/time-range [get]
-func GetHeadlingLogsByTimeRange(c *gin.Context) {
+// @Router /heralding/logs/time-range [get]
+func GetHeraldingLogsByTimeRange(c *gin.Context) {
 	startTimeStr := c.Query("start_time")
 	endTimeStr := c.Query("end_time")
 
@@ -229,7 +229,7 @@ func GetHeadlingLogsByTimeRange(c *gin.Context) {
 		return
 	}
 
-	service, err := services.NewHeadlingService()
+	service, err := services.NewHeraldingService()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
 		return
@@ -244,15 +244,15 @@ func GetHeadlingLogsByTimeRange(c *gin.Context) {
 	utils.ResponseSuccess(c, logs)
 }
 
-// GetHeadlingStatistics 获取headling认证统计信息
-// @Summary 获取headling认证统计信息
-// @Description 获取headling认证日志的统计信息
-// @Tags Headling认证日志
+// GetHeraldingStatistics 获取heralding认证统计信息
+// @Summary 获取heralding认证统计信息
+// @Description 获取heralding认证日志的统计信息
+// @Tags Heralding认证日志
 // @Produce json
 // @Success 200 {object} utils.Response
-// @Router /headling/statistics [get]
-func GetHeadlingStatistics(c *gin.Context) {
-	service, err := services.NewHeadlingService()
+// @Router /heralding/statistics [get]
+func GetHeraldingStatistics(c *gin.Context) {
+	service, err := services.NewHeraldingService()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
 		return
@@ -270,12 +270,12 @@ func GetHeadlingStatistics(c *gin.Context) {
 // GetAttackerIPStatistics 获取攻击者IP统计信息
 // @Summary 获取攻击者IP统计信息
 // @Description 获取攻击者IP的详细统计信息
-// @Tags Headling认证日志
+// @Tags Heralding认证日志
 // @Produce json
 // @Success 200 {object} utils.Response
-// @Router /headling/attacker-statistics [get]
+// @Router /heralding/attacker-statistics [get]
 func GetAttackerIPStatistics(c *gin.Context) {
-	service, err := services.NewHeadlingService()
+	service, err := services.NewHeraldingService()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
 		return
@@ -293,11 +293,11 @@ func GetAttackerIPStatistics(c *gin.Context) {
 // GetTopAttackers 获取前N个攻击者
 // @Summary 获取前N个攻击者
 // @Description 获取攻击次数最多的前N个攻击者
-// @Tags Headling认证日志
+// @Tags Heralding认证日志
 // @Produce json
 // @Param limit query int false "限制数量" default(10)
 // @Success 200 {object} utils.Response
-// @Router /headling/top-attackers [get]
+// @Router /heralding/top-attackers [get]
 func GetTopAttackers(c *gin.Context) {
 	limitStr := c.DefaultQuery("limit", "10")
 	limit, err := strconv.Atoi(limitStr)
@@ -305,7 +305,7 @@ func GetTopAttackers(c *gin.Context) {
 		limit = 10
 	}
 
-	service, err := services.NewHeadlingService()
+	service, err := services.NewHeraldingService()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
 		return
@@ -323,11 +323,11 @@ func GetTopAttackers(c *gin.Context) {
 // GetTopUsernames 获取最常用的用户名
 // @Summary 获取最常用的用户名
 // @Description 获取使用频率最高的前N个用户名
-// @Tags Headling认证日志
+// @Tags Heralding认证日志
 // @Produce json
 // @Param limit query int false "限制数量" default(10)
 // @Success 200 {object} utils.Response
-// @Router /headling/top-usernames [get]
+// @Router /heralding/top-usernames [get]
 func GetTopUsernames(c *gin.Context) {
 	limitStr := c.DefaultQuery("limit", "10")
 	limit, err := strconv.Atoi(limitStr)
@@ -335,7 +335,7 @@ func GetTopUsernames(c *gin.Context) {
 		limit = 10
 	}
 
-	service, err := services.NewHeadlingService()
+	service, err := services.NewHeraldingService()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
 		return
@@ -353,11 +353,11 @@ func GetTopUsernames(c *gin.Context) {
 // GetTopPasswords 获取最常用的密码
 // @Summary 获取最常用的密码
 // @Description 获取使用频率最高的前N个密码
-// @Tags Headling认证日志
+// @Tags Heralding认证日志
 // @Produce json
 // @Param limit query int false "限制数量" default(10)
 // @Success 200 {object} utils.Response
-// @Router /headling/top-passwords [get]
+// @Router /heralding/top-passwords [get]
 func GetTopPasswords(c *gin.Context) {
 	limitStr := c.DefaultQuery("limit", "10")
 	limit, err := strconv.Atoi(limitStr)
@@ -365,7 +365,7 @@ func GetTopPasswords(c *gin.Context) {
 		limit = 10
 	}
 
-	service, err := services.NewHeadlingService()
+	service, err := services.NewHeraldingService()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
 		return
@@ -380,22 +380,22 @@ func GetTopPasswords(c *gin.Context) {
 	utils.ResponseSuccess(c, passwords)
 }
 
-// DeleteHeadlingLogsByContainer 删除指定容器的认证日志
+// DeleteHeraldingLogsByContainer 删除指定容器的认证日志
 // @Summary 删除指定容器的认证日志
-// @Description 删除指定容器的所有headling认证日志
-// @Tags Headling认证日志
+// @Description 删除指定容器的所有heralding认证日志
+// @Tags Heralding认证日志
 // @Produce json
 // @Param container_id path string true "容器ID"
 // @Success 200 {object} utils.Response
-// @Router /headling/logs/container/{container_id} [delete]
-func DeleteHeadlingLogsByContainer(c *gin.Context) {
+// @Router /heralding/logs/container/{container_id} [delete]
+func DeleteHeraldingLogsByContainer(c *gin.Context) {
 	containerID := c.Param("container_id")
 	if containerID == "" {
 		utils.ResponseError(c, http.StatusBadRequest, "容器ID不能为空")
 		return
 	}
 
-	service, err := services.NewHeadlingService()
+	service, err := services.NewHeraldingService()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
 		return

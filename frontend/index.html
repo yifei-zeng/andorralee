@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AndorraLee 蜜罐管理系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/frontend/style.css">
+</head>
+<body>
+    <div id="sidebar">
+        <div class="brand">
+            <i class="fas fa-shield-virus"></i> AndorraLee
+        </div>
+        <nav>
+            <a class="nav-item active" data-route="dashboard"><i class="fas fa-tachometer-alt"></i> 仪表盘</a>
+            <a class="nav-item" data-route="containers"><i class="fas fa-docker"></i> 容器管理</a>
+            <a class="nav-item" data-route="logs"><i class="fas fa-file-alt"></i> 日志审计</a>
+            <a class="nav-item" data-route="malware"><i class="fas fa-bug"></i> 病毒检测</a>
+            <a class="nav-item" data-route="network"><i class="fas fa-network-wired"></i> 网络端口</a>
+            <a class="nav-item" data-route="threats"><i class="fas fa-skull-crossbones"></i> 威胁情报</a>
+            <a class="nav-item" data-route="system"><i class="fas fa-cogs"></i> 系统设置</a>
+        </nav>
+    </div>
+
+    <div id="main">
+        <header>
+            <h2 id="page-title">仪表盘</h2>
+            <div style="display:flex; align-items:center; gap:15px">
+                <span id="system-status" class="badge badge-info">检查中...</span>
+                <span id="current-time" style="font-size:14px; color:#666"></span>
+                <button id="refresh-btn" class="btn btn-sm btn-outline"><i class="fas fa-sync"></i></button>
+            </div>
+        </header>
+
+        <div id="content-area">
+            <!-- Dynamic Content -->
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script src="/frontend/app.js"></script>
+</body>
+</html>

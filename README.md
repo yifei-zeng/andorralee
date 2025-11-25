@@ -31,6 +31,7 @@ Andorralee 是一款基于 Go 语言开发的企业级蜜罐诱捕系统，专�
 
 ### 📊 日志记录与分析
 - ✅ **完整日志**: 连接、认证、命令等全生命周期记录
+- ✅ **多源日志拉取**: 内置 Cowrie / Heralding / MySQL 蜜罐日志自动采集
 - ✅ **日志导出**: 支持多种格式的日志导出
 - ✅ **统计分析**: 攻击统计和趋势分析
 - ✅ **长期存储**: 支持日志长期存储和归档
@@ -103,6 +104,15 @@ docker-compose up -d
 docker-compose logs -f
 ```
 
+### 5. 配置环境变量
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `COWRIE_LOG_PATH` | 指向 Cowrie 容器内的 `cowrie.json` 日志文件或目录，未设置时会自动尝试常见路径 | 自动检测 |
+| `COWRIE_AUTO_ENABLED` | `true` 时后台定期自动拉取 Cowrie 日志 | `false` |
+| `COWRIE_SYNTHETIC_ENABLED` | `true` 时启用演示环境的合成日志生成 | `false` |
+| `HERALDING_LOG_PATH` | 指向 Heralding/Heralding CSV 认证日志，未设置时尝试 `/var/log/heralding` 等常见目录 | 自动检测 |
+| `MYSQL_HONEYPOT_LOG_PATH` | 指向 MySQL 蜜罐的 JSON/LOG 日志文件路径，未设置时会遍历 `/var/log/mysql-honeypot*.log` 等路径 | 自动检测 |
+
 ## 📖 API文档
 
 系统启动后，可以通过以下端点访问：
@@ -121,6 +131,9 @@ docker-compose logs -f
 | `/api/honeytokens/statistics` | GET | 蜜签统计 |
 | `/api/sessions/statistics` | GET | 会话统计 |
 | `/api/logs/export` | GET | 日志导出 |
+| `/api/v1/cowrie/pull-logs` | POST | 拉取 Cowrie 蜜罐日志 |
+| `/api/v1/heralding/pull-logs` | POST | 拉取 Heralding/Heralding 认证日志 |
+| `/api/v1/mysql-honeypot/pull-logs` | POST | 拉取 MySQL 蜜罐日志 |
 
 ## 📁 项目结构
 
@@ -216,8 +229,8 @@ make deploy-dev
 # 构建生产版本
 make release
 
-# 部署到生产环境
-./deployment/deploy-kylin.sh
+# 部署到生产环境（示例）
+docker-compose -f docker-compose.yml up -d
 ```
 
 详细部署指南请查看 [功能完善开发流程指南](docs/功能完善开发流程指南.md)

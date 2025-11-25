@@ -571,7 +571,9 @@ func SyncMemoryContainerStatus(c *gin.Context) {
 	ctx := context.Background()
 	syncCount := 0
 	errorCount := 0
+	importCount := 0
 
+	// 1. 同步已知容器状态
 	for _, instance := range memoryInstances {
 		// 获取容器状态
 		containerJSON, err := config.DockerCli.ContainerInspect(ctx, instance.ContainerID)
@@ -596,10 +598,82 @@ func SyncMemoryContainerStatus(c *gin.Context) {
 		}
 	}
 
+	// 2. 发现并导入未管理的容器
+	knownIDs := make(map[string]bool)
+	for _, inst := range memoryInstances {
+		if inst.ContainerID != "" {
+			knownIDs[inst.ContainerID] = true
+		}
+	}
+
+	dockerContainers, err := config.DockerCli.ContainerList(ctx, container.ListOptions{All: true})
+	if err == nil {
+		for _, dc := range dockerContainers {
+			if knownIDs[dc.ID] {
+				continue // 已存在，跳过
+			}
+
+			name := dc.Names[0]
+			if strings.HasPrefix(name, "/") {
+				name = name[1:]
+			}
+
+			info, err := config.DockerCli.ContainerInspect(ctx, dc.ID)
+			if err != nil {
+				continue
+			}
+
+			// 解析端口映射
+			var mainPort int
+			protocol := "tcp"
+			portMappings := make(map[string]string)
+			for p, bindings := range info.HostConfig.PortBindings {
+				if len(bindings) > 0 {
+					portMappings[p.Port()] = bindings[0].HostPort
+					if mainPort == 0 {
+						mainPort, _ = strconv.Atoi(bindings[0].HostPort)
+						switch p.Port() {
+						case "22":
+							protocol = "ssh"
+						case "80":
+							protocol = "http"
+						case "3306":
+							protocol = "mysql"
+						}
+					}
+				}
+			}
+
+			// 导入为内存实例
+			importedInstance := &MemoryContainerInstance{
+				ID:            getNextAvailableID(),
+				Name:          name,
+				HoneypotName:  name,
+				ContainerName: name,
+				ContainerID:   dc.ID,
+				IP:            "0.0.0.0",
+				Port:          mainPort,
+				Protocol:      protocol,
+				InterfaceType: "imported",
+				Status:        dc.State,
+				ImageName:     dc.Image,
+				ImageID:       dc.ImageID,
+				PortMappings:  portMappings,
+				Environment:   make(map[string]string),
+				CreateTime:    time.Unix(dc.Created, 0),
+				UpdateTime:    time.Now(),
+				Description:   "Auto-imported from Docker",
+			}
+			memoryInstances[importedInstance.ID] = importedInstance
+			importCount++
+		}
+	}
+
 	result := map[string]interface{}{
-		"synced_count": syncCount,
-		"error_count":  errorCount,
-		"total_count":  len(memoryInstances),
+		"synced_count":  syncCount,
+		"error_count":   errorCount,
+		"import_count":  importCount,
+		"total_managed": len(memoryInstances),
 	}
 
 	utils.ResponseSuccess(c, result)

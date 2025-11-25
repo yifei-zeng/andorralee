@@ -22,12 +22,13 @@
 |--------|------|------|
 | `go.mod` / `go.sum` | Go模块依赖管理 | ✅ 完整 |
 | `go.work` / `go.work.sum` | Go工作区配置 | ✅ 完整 |
-| `docker-compose.yml` | 开发环境容器编排 | ✅ 完整 |
-| `docker-compose.kylin.yml` | 麒麟系统部署配置 | ✅ 完整 |
-| `Dockerfile` / `Dockerfile.kylin` | 容器镜像构建文件 | ✅ 完整 |
-| `deploy-kylin.ps1` / `deploy-kylin.sh` | 麒麟系统部署脚本 | ✅ 完整 |
+| `docker-compose.yml` | 统一容器编排配置 | ✅ 完整 |
+| `Dockerfile` | 容器镜像构建文件 | ✅ 完整 |
+| `deployment/` | 数据库脚本与部署资源 | ✅ 完整 |
 | `README.md` | 项目介绍和使用说明 | ✅ 完整 |
 | `RELEASE_NOTES.md` | 版本发布说明 | ✅ 完整 |
+
+> 注: v2.0 起已移除 Kylin/ARM 专用 compose、Dockerfile 与部署脚本，统一使用 `docker-compose.yml` 搭配自定义环境变量完成部署。
 
 ### 核心目录结构
 
@@ -132,8 +133,9 @@ andorralee/
 | `malware_handler.go` | 病毒检测和扫描 | `/api/v1/malware` | ✅ 完整 |
 | `threat_handler.go` | 威胁情报管理 | `/api/v1/threats` | ✅ 完整 |
 | `attack_capture_handler.go` | 攻击事件捕获 | `/api/v1/attack-capture` | ✅ 完整 |
-| `headling_handler.go` | 认证日志管理 | `/api/v1/headling` | ✅ 完整 |
+| `heralding_handler.go` | 认证日志管理 | `/api/v1/heralding` | ✅ 完整 |
 | `cowrie_handler.go` | Cowrie蜜罐日志 | `/api/v1/cowrie` | ✅ 完整 |
+| `mysql_honeypot_handler.go` | MySQL蜜罐日志 | `/api/v1/mysql-honeypot` | ✅ 完整 |
 | `honeytokens_handler.go` | 蜜签管理 | `/api/v1/honeytokens` | ✅ 完整 |
 | `port_manager_handler.go` | 端口管理 | `/api/v1/ports` | ✅ 完整 |
 | `data.go` | 通用数据操作 | `/api/v1/data` | ⚠️ **占位符** |
@@ -188,8 +190,9 @@ andorralee/
 - 更多攻击分析接口...
 
 ### 日志分析接口 (40+ 接口)
-- **Headling认证日志**: 15+ 接口 (`/api/v1/headling`)
+- **Heralding认证日志**: 15+ 接口 (`/api/v1/heralding`)
 - **Cowrie蜜罐日志**: 20+ 接口 (`/api/v1/cowrie`)
+- **MySQL蜜罐日志**: 10+ 接口 (`/api/v1/mysql-honeypot`)
 - **容器运行日志**: 多个日志管理接口
 
 ### 蜜签管理接口 (8 接口)
@@ -257,8 +260,8 @@ go build -o build/andorralee ./cmd/main.go
 # 开发环境
 docker-compose up -d
 
-# 麒麟系统部署
-docker-compose -f docker-compose.kylin.yml up -d
+# 生产环境示例（按需调整端口/变量）
+docker-compose -f docker-compose.yml up -d
 ```
 
 ### 数据库初始化
@@ -295,8 +298,9 @@ mysql -u root -p < scripts/init_db.sql
 - 动态端口分配
 
 ### 5. 完整的日志系统
-- 认证日志 (Headling)
+- 认证日志 (Heralding)
 - 交互日志 (Cowrie)  
+- 数据库欺骗日志 (MySQL Honeypot)
 - 容器运行日志
 - 系统操作日志
 
