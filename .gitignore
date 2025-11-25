@@ -1,1 +1,20 @@
 
+# Ignore build artifacts and executables
+*.exe
+/build/
+/bin/
+
+# Ignore local binaries and main executables
+backend.exe
+main.exe
+andorralee.exe
+
+# Uploads and temporary runtime data
+/uploads/
+/send/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+
