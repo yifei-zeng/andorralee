@@ -1,16 +1,16 @@
-# Headling认证日志管理功能实现总结
+# Heralding认证日志管理功能实现总结
 
 ## 项目概述
 
-成功为您的蜜罐管理系统添加了完整的Headling认证日志管理功能，包括数据库设计、后端服务、API接口等全套解决方案。
+成功为您的蜜罐管理系统添加了完整的Heralding认证日志管理功能，包括数据库设计、后端服务、API接口等全套解决方案。
 
 ## 实现的功能
 
 ### 1. 数据库设计
 
 #### 新增表结构
-- **headling_auth_log**: 存储认证日志的主表
-- **v_headling_auth_statistics**: 认证统计视图
+- **heralding_auth_log**: 存储认证日志的主表
+- **v_heralding_auth_statistics**: 认证统计视图
 - **v_attacker_ip_statistics**: 攻击者IP统计视图
 
 #### 字段设计
@@ -28,22 +28,22 @@
 ### 2. 后端服务实现
 
 #### 数据模型 (internal/repositories/models.go)
-- `HeadlingAuthLog`: 主要数据模型
-- `HeadlingAuthStatistics`: 统计数据模型
+- `HeraldingAuthLog`: 主要数据模型
+- `HeraldingAuthStatistics`: 统计数据模型
 - `AttackerIPStatistics`: 攻击者统计模型
 
 #### 仓库层 (internal/repositories/)
-- `HeadlingAuthLogRepository`: 仓库接口定义
-- `MySQLHeadlingAuthLogRepo`: MySQL实现
+- `HeraldingAuthLogRepository`: 仓库接口定义
+- `MySQLHeraldingAuthLogRepo`: MySQL实现
 - 支持CRUD操作、批量操作、统计查询
 
-#### 服务层 (internal/services/headling_service.go)
-- `HeadlingService`: 业务逻辑服务
-- `PullHeadlingLogs`: 日志拉取功能
+#### 服务层 (internal/services/heralding_service.go)
+- `HeraldingService`: 业务逻辑服务
+- `PullHeraldingLogs`: 日志拉取功能
 - `parseCSVLogs`: CSV解析功能
 - 各种查询和统计方法
 
-#### 控制器层 (internal/handlers/headling_handler.go)
+#### 控制器层 (internal/handlers/heralding_handler.go)
 - 完整的RESTful API处理器
 - 支持日志拉取、查询、统计、删除等操作
 
@@ -51,7 +51,7 @@
 
 #### 基础URL
 ```
-http://localhost:8080/api/v1/headling
+http://localhost:8080/api/v1/heralding
 ```
 
 #### 主要接口
@@ -102,15 +102,15 @@ go build -o bin/andorralee cmd/main.go
 ### 3. 功能测试
 ```bash
 # 测试日志拉取
-curl -X POST "http://localhost:8080/api/v1/headling/pull-logs" \
+curl -X POST "http://localhost:8080/api/v1/heralding/pull-logs" \
   -H "Content-Type: application/json" \
   -d '{"container_id": "your_container_id"}'
 
 # 查看拉取的日志
-curl "http://localhost:8080/api/v1/headling/logs"
+curl "http://localhost:8080/api/v1/heralding/logs"
 
 # 获取统计信息
-curl "http://localhost:8080/api/v1/headling/statistics"
+curl "http://localhost:8080/api/v1/heralding/statistics"
 ```
 
 ## 使用示例
@@ -118,27 +118,27 @@ curl "http://localhost:8080/api/v1/headling/statistics"
 ### 1. 拉取并分析日志
 ```bash
 # 1. 拉取指定容器的认证日志
-curl -X POST "http://localhost:8080/api/v1/headling/pull-logs" \
+curl -X POST "http://localhost:8080/api/v1/heralding/pull-logs" \
   -H "Content-Type: application/json" \
   -d '{"container_id": "container_123"}'
 
 # 2. 查看该容器的所有认证尝试
-curl "http://localhost:8080/api/v1/headling/logs/container/container_123"
+curl "http://localhost:8080/api/v1/heralding/logs/container/container_123"
 
 # 3. 分析攻击者行为
-curl "http://localhost:8080/api/v1/headling/logs/source-ip/192.168.1.100"
+curl "http://localhost:8080/api/v1/heralding/logs/source-ip/192.168.1.100"
 ```
 
 ### 2. 安全分析
 ```bash
 # 获取最活跃的攻击者
-curl "http://localhost:8080/api/v1/headling/top-attackers?limit=5"
+curl "http://localhost:8080/api/v1/heralding/top-attackers?limit=5"
 
 # 获取最常用的用户名
-curl "http://localhost:8080/api/v1/headling/top-usernames?limit=10"
+curl "http://localhost:8080/api/v1/heralding/top-usernames?limit=10"
 
 # 获取攻击者详细统计
-curl "http://localhost:8080/api/v1/headling/attacker-statistics"
+curl "http://localhost:8080/api/v1/heralding/attacker-statistics"
 ```
 
 ## 技术特性
@@ -201,12 +201,12 @@ curl "http://localhost:8080/api/v1/headling/attacker-statistics"
 
 ### 新增文件
 - `scripts/update_database_schema.sql` - 数据库迁移脚本
-- `internal/services/headling_service.go` - Headling服务
-- `internal/handlers/headling_handler.go` - API处理器
+- `internal/services/heralding_service.go` - Heralding服务
+- `internal/handlers/heralding_handler.go` - API处理器
 - `internal/handlers/container_log_handler.go` - 容器日志分析处理器
 - `internal/handlers/docker_image_log_handler.go` - Docker镜像日志处理器
-- `docs/headling_auth_log_guide.md` - 使用指南
-- `docs/headling_implementation_summary.md` - 实现总结
+- `docs/heralding_auth_log_guide.md` - 使用指南
+- `docs/heralding_implementation_summary.md` - 实现总结
 
 ### 修改文件
 - `internal/repositories/models.go` - 添加新模型
@@ -217,7 +217,7 @@ curl "http://localhost:8080/api/v1/headling/attacker-statistics"
 
 ## 总结
 
-成功为您的项目实现了完整的Headling认证日志管理功能，包括：
+成功为您的项目实现了完整的Heralding认证日志管理功能，包括：
 
 ✅ **数据库设计** - 完整的表结构和索引设计
 ✅ **后端服务** - 模块化的服务架构

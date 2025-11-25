@@ -160,8 +160,8 @@ SELECT
 FROM container_log_segment
 GROUP BY container_id, container_name, segment_type;
 
--- 创建headling认证日志表
-CREATE TABLE IF NOT EXISTS `headling_auth_log` (
+-- 创建heralding认证日志表
+CREATE TABLE IF NOT EXISTS `heralding_auth_log` (
     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `timestamp` DATETIME(6) NOT NULL COMMENT '捕获到认证行为的时间戳',
     `auth_id` VARCHAR(36) NOT NULL COMMENT '此次认证行为的唯一ID',
@@ -187,10 +187,10 @@ CREATE TABLE IF NOT EXISTS `headling_auth_log` (
     INDEX `idx_container_id` (`container_id`),
     INDEX `idx_username` (`username`),
     INDEX `idx_created_at` (`created_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Headling认证日志';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Heralding认证日志';
 
--- 创建headling认证统计视图
-CREATE OR REPLACE VIEW `v_headling_auth_statistics` AS
+-- 创建heralding认证统计视图
+CREATE OR REPLACE VIEW `v_heralding_auth_statistics` AS
 SELECT
     DATE(timestamp) as log_date,
     protocol,
@@ -200,7 +200,7 @@ SELECT
     COUNT(DISTINCT session_id) as unique_sessions,
     MIN(timestamp) as first_attempt,
     MAX(timestamp) as last_attempt
-FROM headling_auth_log
+FROM heralding_auth_log
 GROUP BY DATE(timestamp), protocol;
 
 -- 创建攻击者IP统计视图
@@ -214,7 +214,7 @@ SELECT
     MIN(timestamp) as first_seen,
     MAX(timestamp) as last_seen,
     TIMESTAMPDIFF(MINUTE, MIN(timestamp), MAX(timestamp)) as attack_duration_minutes
-FROM headling_auth_log
+FROM heralding_auth_log
 GROUP BY source_ip
 ORDER BY total_attempts DESC;
 

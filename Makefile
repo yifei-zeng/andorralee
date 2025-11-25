@@ -192,8 +192,9 @@ deploy: build-linux docker
 	@echo "正在部署到生产环境..."
 	@echo "1. 构建完成"
 	@echo "2. Docker镜像已准备"
-	@echo "3. 请手动执行部署脚本:"
-	@echo "   ./deployment/deploy-kylin.sh"
+	@echo "3. 请在目标环境执行 docker-compose 命令:"
+	@echo "   docker-compose -f docker-compose.yml up -d"
+	@echo "   # 如需差异化配置，可自定义 override 文件"
 
 # 快速部署 (开发环境)
 deploy-dev: docker-run

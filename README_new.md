@@ -217,7 +217,8 @@ make deploy-dev
 make release
 
 # 部署到生产环境
-./deployment/deploy-kylin.sh
+# 参考示例，按需调整端口/环境变量
+docker-compose -f docker-compose.yml up -d
 ```
 
 详细部署指南请查看 [功能完善开发流程指南](docs/功能完善开发流程指南.md)

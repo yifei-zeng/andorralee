@@ -109,22 +109,23 @@ type DockerContainerRepository interface {
 	UpdateStatus(containerID string, status string) error
 }
 
-// HeadlingAuthLogRepository Headling认证日志仓库接口
-type HeadlingAuthLogRepository interface {
-	List() ([]HeadlingAuthLog, error)
-	GetByID(id uint) (*HeadlingAuthLog, error)
-	GetByAuthID(authID string) (*HeadlingAuthLog, error)
-	GetBySessionID(sessionID string) ([]HeadlingAuthLog, error)
-	GetBySourceIP(sourceIP string) ([]HeadlingAuthLog, error)
-	GetByContainerID(containerID string) ([]HeadlingAuthLog, error)
-	GetByProtocol(protocol string) ([]HeadlingAuthLog, error)
-	GetByTimeRange(startTime, endTime time.Time) ([]HeadlingAuthLog, error)
-	Create(log *HeadlingAuthLog) error
-	CreateBatch(logs []HeadlingAuthLog) error
-	Update(log *HeadlingAuthLog) error
+// HeraldingAuthLogRepository Heralding认证日志仓库接口
+type HeraldingAuthLogRepository interface {
+	List() ([]HeraldingAuthLog, error)
+	GetByID(id uint) (*HeraldingAuthLog, error)
+	GetByAuthID(authID string) (*HeraldingAuthLog, error)
+	GetBySessionID(sessionID string) ([]HeraldingAuthLog, error)
+	GetBySourceIP(sourceIP string) ([]HeraldingAuthLog, error)
+	GetByContainerID(containerID string) ([]HeraldingAuthLog, error)
+	GetLatestByContainerID(containerID string) (*HeraldingAuthLog, error)
+	GetByProtocol(protocol string) ([]HeraldingAuthLog, error)
+	GetByTimeRange(startTime, endTime time.Time) ([]HeraldingAuthLog, error)
+	Create(log *HeraldingAuthLog) error
+	CreateBatch(logs []HeraldingAuthLog) error
+	Update(log *HeraldingAuthLog) error
 	Delete(id uint) error
 	DeleteByContainerID(containerID string) error
-	GetStatistics() ([]HeadlingAuthStatistics, error)
+	GetStatistics() ([]HeraldingAuthStatistics, error)
 	GetAttackerIPStatistics() ([]AttackerIPStatistics, error)
 	GetTopAttackers(limit int) ([]AttackerIPStatistics, error)
 	GetTopUsernames(limit int) ([]map[string]interface{}, error)
@@ -158,4 +159,21 @@ type CowrieLogRepository interface {
 	GetTopUsernames(limit int) ([]map[string]interface{}, error)
 	GetTopPasswords(limit int) ([]map[string]interface{}, error)
 	GetTopFingerprints(limit int) ([]map[string]interface{}, error)
+}
+
+// MySQLHoneypotLogRepository MySQL蜜罐日志仓库接口
+type MySQLHoneypotLogRepository interface {
+	List() ([]MySQLHoneypotLog, error)
+	GetByID(id uint) (*MySQLHoneypotLog, error)
+	GetByEventID(eventID string) (*MySQLHoneypotLog, error)
+	GetByContainerID(containerID string) ([]MySQLHoneypotLog, error)
+	GetLatestByContainerID(containerID string) (*MySQLHoneypotLog, error)
+	GetBySourceIP(sourceIP string) ([]MySQLHoneypotLog, error)
+	GetByUsername(username string) ([]MySQLHoneypotLog, error)
+	GetByTimeRange(startTime, endTime time.Time) ([]MySQLHoneypotLog, error)
+	Create(log *MySQLHoneypotLog) error
+	CreateBatch(logs []MySQLHoneypotLog) error
+	Delete(id uint) error
+	DeleteByContainerID(containerID string) error
+	GetQueryStatistics(limit int) ([]MySQLHoneypotStatistics, error)
 }

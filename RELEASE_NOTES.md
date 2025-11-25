@@ -111,7 +111,7 @@ andorralee/
 - **实时监控**: 容器运行时安全监控
 
 ### 3. 日志分析
-- **多源日志**: Cowrie、Headling等蜜罐日志
+- **多源日志**: Cowrie、Heralding、MySQL 蜜罐日志自动采集
 - **智能分析**: 攻击行为模式识别
 - **统计报告**: 详细的安全统计信息
 
@@ -137,11 +137,10 @@ http://localhost:9090/static/debug-container.html
 
 ### Docker部署
 ```bash
-# 普通环境
-docker-compose up -d
+# 生产环境（按需自定义 compose 覆盖）
+docker-compose -f docker-compose.yml up -d
 
-# 麒麟系统
-docker-compose -f docker-compose.kylin.yml up -d
+> 提示: v2.0 起已移除 Kylin/ARM 专用 compose 文件，统一使用 `docker-compose.yml` 并通过覆盖文件或环境变量完成差异化部署。
 ```
 
 ## ✅ 验证清单

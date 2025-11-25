@@ -389,14 +389,24 @@ func SyncContainerStatus(c *gin.Context) {
 		return
 	}
 
+	// 1. 获取数据库中所有实例
 	instances, err := service.GetAllInstances()
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "获取容器实例失败: "+err.Error())
 		return
 	}
 
+	// 建立已知容器ID的映射
+	knownContainerIDs := make(map[string]bool)
+	for _, instance := range instances {
+		if instance.ContainerID != "" {
+			knownContainerIDs[instance.ContainerID] = true
+		}
+	}
+
 	syncResults := make([]map[string]interface{}, 0)
 
+	// 2. 更新已有实例的状态
 	for _, instance := range instances {
 		result := map[string]interface{}{
 			"id":           instance.ID,
@@ -408,16 +418,17 @@ func SyncContainerStatus(c *gin.Context) {
 		if instance.ContainerID != "" {
 			containerInfo, err := config.DockerCli.ContainerInspect(context.Background(), instance.ContainerID)
 			if err != nil {
-				result["new_status"] = "deleted"
-				result["error"] = err.Error()
-				// 更新数据库状态
-				service.UpdateInstanceStatus(instance.ID, "deleted")
+				// 容器在Docker中不存在，标记为deleted
+				if instance.Status != "deleted" {
+					result["new_status"] = "deleted"
+					result["error"] = err.Error()
+					service.UpdateInstanceStatus(instance.ID, "deleted")
+				}
 			} else {
 				dockerStatus := containerInfo.State.Status
 				result["new_status"] = dockerStatus
 
 				if dockerStatus != instance.Status {
-					// 更新数据库状态
 					if err := service.UpdateInstanceStatus(instance.ID, dockerStatus); err != nil {
 						result["update_error"] = err.Error()
 					} else {
@@ -427,12 +438,85 @@ func SyncContainerStatus(c *gin.Context) {
 					result["updated"] = false
 				}
 			}
-		} else {
-			result["new_status"] = "no_container_id"
-			result["error"] = "容器ID为空"
 		}
-
 		syncResults = append(syncResults, result)
+	}
+
+	// 3. 发现并导入未管理的容器
+	dockerContainers, err := config.DockerCli.ContainerList(context.Background(), container.ListOptions{All: true})
+	if err == nil {
+		for _, dc := range dockerContainers {
+			// 如果是未知的容器（不在数据库中）
+			if !knownContainerIDs[dc.ID] {
+				// 忽略非蜜罐相关的容器（可选：根据标签或命名规则过滤，这里暂时全部导入）
+				// 简单过滤：忽略 Exited 的容器，除非明确需要
+				// if dc.State == "exited" { continue }
+
+				name := dc.Names[0]
+				if strings.HasPrefix(name, "/") {
+					name = name[1:]
+				}
+
+				// 尝试获取更多信息
+				info, err := config.DockerCli.ContainerInspect(context.Background(), dc.ID)
+				if err != nil {
+					continue
+				}
+
+				// 简单的端口推断
+				var mainPort int
+				var protocol string = "tcp"
+				portMappings := make(map[string]string)
+
+				for p, bindings := range info.HostConfig.PortBindings {
+					if len(bindings) > 0 {
+						portMappings[p.Port()] = bindings[0].HostPort
+						if mainPort == 0 {
+							mainPort, _ = strconv.Atoi(bindings[0].HostPort)
+							if p.Port() == "22" {
+								protocol = "ssh"
+							}
+							if p.Port() == "80" {
+								protocol = "http"
+							}
+							if p.Port() == "3306" {
+								protocol = "mysql"
+							}
+						}
+					}
+				}
+
+				portJSON, _ := json.Marshal(portMappings)
+
+				newInstance := &repositories.HoneypotInstance{
+					Name:          name,
+					HoneypotName:  name, // 默认使用容器名
+					ContainerName: name,
+					ContainerID:   dc.ID,
+					IP:            "0.0.0.0",
+					Port:          mainPort,
+					Protocol:      protocol,
+					InterfaceType: "imported",
+					Status:        dc.State,
+					ImageName:     dc.Image,
+					ImageID:       dc.ImageID,
+					PortMappings:  string(portJSON),
+					Environment:   "{}",
+					CreateTime:    time.Unix(dc.Created, 0),
+					UpdateTime:    time.Now(),
+					Description:   "Auto-imported from Docker",
+				}
+
+				if err := service.CreateInstance(newInstance); err == nil {
+					syncResults = append(syncResults, map[string]interface{}{
+						"name":         name,
+						"container_id": dc.ID,
+						"action":       "imported",
+						"status":       dc.State,
+					})
+				}
+			}
+		}
 	}
 
 	utils.ResponseSuccess(c, map[string]interface{}{

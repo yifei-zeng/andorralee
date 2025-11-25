@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>API 测试 - Andorralee</title>
+  <link rel="stylesheet" href="/frontend/style.css" />
+  <script defer src="/frontend/app.js"></script>
+</head>
+<body>
+  <header><h1>API 测试页面</h1></header>
+  <main>
+    <section>
+      <h2>通用请求</h2>
+      <div>
+        <label>方法
+          <select id="req-method"><option>GET</option><option>POST</option></select>
+        </label>
+        <label>路径 <input id="req-path" value="/api/v1/health" style="width:420px"/></label>
+        <button id="btn-send">发送</button>
+      </div>
+      <pre id="req-result"></pre>
+    </section>
+  </main>
+</body>
+</html>

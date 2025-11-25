@@ -34,7 +34,7 @@
 internal/handlers/container_log_handler.go          # 容器日志语义分析 (数据库存储)
 internal/handlers/container_runtime_log_handler.go  # 容器运行时日志 (内存存储)
 internal/handlers/session_handler.go                # 会话管理系统
-internal/handlers/headling_handler.go               # Headling认证日志处理
+internal/handlers/heralding_handler.go               # Heralding认证日志处理
 internal/handlers/cowrie_handler.go                 # Cowrie蜜罐日志处理
 internal/services/ai.go                             # 日志语义分析服务 (基于规则匹配)
 routers/router.go                                   # API路由配置
@@ -44,7 +44,7 @@ routers/router.go                                   # API路由配置
 ```
 routers/router.go:308-331   # 容器日志分析接口
 routers/router.go:343-359   # 会话管理接口  
-routers/router.go:130-149   # Headling认证日志接口
+routers/router.go:130-149   # Heralding认证日志接口
 routers/router.go:151-175   # Cowrie蜜罐日志接口
 ```
 
@@ -423,12 +423,12 @@ func (h *SessionHandler) GetSessionStatistics(c *gin.Context)
 
 ### 4. 专用蜜罐日志处理
 
-#### Headling认证日志处理
+#### Heralding认证日志处理
 ```go
-// 位置: internal/handlers/headling_handler.go
+// 位置: internal/handlers/heralding_handler.go
 // 功能: SSH/Telnet认证日志分析
 // 格式: CSV格式日志文件
-// API路由: /api/v1/headling/*
+// API路由: /api/v1/heralding/*
 
 // 主要功能:
 // - 认证尝试统计
@@ -449,6 +449,20 @@ func (h *SessionHandler) GetSessionStatistics(c *gin.Context)
 // - 攻击者行为模式
 // - 文件传输监控
 // - 客户端指纹识别
+```
+
+#### MySQL 蜜罐日志处理
+```go
+// 位置: internal/handlers/mysql_honeypot_handler.go
+// 功能: 数据库蜜罐SQL/认证日志分析
+// 格式: JSON/CSV/纯文本日志 (自动转换)
+// API路由: /api/v1/mysql-honeypot/*
+
+// 主要功能:
+// - SQL查询及凭据统计
+// - IP/用户名溯源
+// - 容器级日志拉取 (Docker Copy)
+// - 自定义路径(MYSQL_HONEYPOT_LOG_PATH)
 ```
 
 ## 📊 统计分析功能

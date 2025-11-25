@@ -33,18 +33,18 @@
 
 #### 日志采集 ✅
 - **实现状态**: 完整实现
-- **相关表**: `honeypot_log`, `cowrie_log`, `headling_auth_log`
+- **相关表**: `honeypot_log`, `cowrie_log`, `heralding_auth_log`
 - **API接口**: 
   - `POST /api/v1/cowrie/pull-logs` (Cowrie日志拉取)
-  - `POST /api/v1/headling/pull-logs` (Headling日志拉取)
-- **Handler**: `cowrie_handler.go`, `headling_handler.go`
+  - `POST /api/v1/heralding/pull-logs` (Heralding日志拉取)
+- **Handler**: `cowrie_handler.go`, `heralding_handler.go`
 
 #### 检索查询 ✅
 - **实现状态**: 完整实现
 - **API接口**: 
   - `GET /api/v1/honeypot/logs` (基础查询)
   - `GET /api/v1/cowrie/logs/container/:container_id` (按容器查询)
-  - `GET /api/v1/headling/logs/time-range` (时间范围查询)
+  - `GET /api/v1/heralding/logs/time-range` (时间范围查询)
   - `GET /api/v1/cowrie/logs/source-ip/:source_ip` (按IP查询)
 - **功能**: 支持分页、排序、多维度筛选
 
@@ -52,7 +52,7 @@
 - **实现状态**: 完整实现
 - **API接口**: 
   - `GET /api/v1/cowrie/statistics` (统计分析)
-  - `GET /api/v1/headling/statistics` (统计分析)
+  - `GET /api/v1/heralding/statistics` (统计分析)
   - `GET /api/v1/cowrie/attacker-behavior` (行为分析)
 - **功能**: 攻击类型统计、趋势分析、行为模式识别
 
@@ -209,7 +209,7 @@
 ## ✅ 已实现的核心优势
 
 1. **完整的蜜罐生态**: 部署、日志、分析全链路
-2. **多源日志整合**: Cowrie、Headling等多种蜜罐支持
+2. **多源日志整合**: Cowrie、Heralding等多种蜜罐支持
 3. **实时威胁检测**: 攻击事件捕获和分析
 4. **灵活的容器管理**: Docker集成和镜像管理
 5. **丰富的统计分析**: 多维度数据分析和可视化支持
