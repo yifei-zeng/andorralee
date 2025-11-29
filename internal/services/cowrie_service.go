@@ -30,7 +30,7 @@ type CowrieService struct {
 // NewCowrieService 创建Cowrie服务
 func NewCowrieService() (*CowrieService, error) {
 	if config.MySQLDB == nil {
-		return nil, fmt.Errorf("MySQL数据库未初始化")
+		return nil, fmt.Errorf("数据库未初始化")
 	}
 
 	service := &CowrieService{

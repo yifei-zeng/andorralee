@@ -27,7 +27,7 @@ type MySQLHoneypotService struct {
 // NewMySQLHoneypotService 创建MySQL蜜罐日志服务
 func NewMySQLHoneypotService() (*MySQLHoneypotService, error) {
 	if config.MySQLDB == nil {
-		return nil, fmt.Errorf("MySQL数据库未初始化")
+		return nil, fmt.Errorf("数据库未初始化")
 	}
 
 	return &MySQLHoneypotService{

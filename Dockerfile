@@ -62,7 +62,7 @@ RUN chmod +x /app/andorralee
 COPY --from=builder /app/static /app/static
 
 # 创建必要的目录并设置权限
-RUN mkdir -p /app/dm_home /app/logs /app/data && \
+RUN mkdir -p /app/logs /app/data && \
     chown -R appuser:appgroup /app
 
 # 暴露应用端口（应用实际监听 9090）
@@ -74,12 +74,6 @@ ENV MYSQL_HOST=mysql \
     MYSQL_USER=root \
     MYSQL_PASSWORD=123456 \
     MYSQL_DATABASE=andorralee \
-    DAMENG_HOST=dameng \
-    DAMENG_PORT=5236 \
-    DAMENG_USER=SYSDBA \
-    DAMENG_PASSWORD=Dm123456 \
-    DAMENG_DATABASE=DOCKER_OPS \
-    DM_HOME=/app/dm_home \
     GIN_MODE=release \
     GOOS=linux
 

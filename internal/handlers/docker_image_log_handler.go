@@ -19,7 +19,7 @@ import (
 // @Router /docker/image-logs [get]
 func GetAllDockerImageLogs(c *gin.Context) {
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -50,7 +50,7 @@ func GetDockerImageLogByID(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -80,7 +80,7 @@ func GetDockerImageLogsByImageID(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -111,7 +111,7 @@ func DeleteDockerImageLog(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -133,7 +133,7 @@ func DeleteDockerImageLog(c *gin.Context) {
 // @Router /docker/images/db [get]
 func GetDockerImages(c *gin.Context) {
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -164,7 +164,7 @@ func GetDockerImageByDBID(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -195,7 +195,7 @@ func DeleteDockerImageRecord(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 

@@ -22,7 +22,7 @@ type HoneypotInstanceService struct {
 // NewHoneypotInstanceService 创建蜜罐实例服务
 func NewHoneypotInstanceService() (*HoneypotInstanceService, error) {
 	if config.MySQLDB == nil {
-		return nil, errors.New("MySQL数据库未初始化")
+		return nil, errors.New("数据库未初始化")
 	}
 
 	repo := repositories.NewMySQLHoneypotInstanceRepo(config.MySQLDB)

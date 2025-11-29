@@ -190,57 +190,6 @@ func (r *MySQLHoneypotLogRepo) Delete(id uint) error {
 	return r.DB.Delete(&HoneypotLog{}, id).Error
 }
 
-// -------------------- 诱饵仓库 --------------------
-
-// MySQLBaitRepo 诱饵MySQL仓库
-type MySQLBaitRepo struct {
-	DB *gorm.DB
-}
-
-// NewMySQLBaitRepo 创建诱饵MySQL仓库
-func NewMySQLBaitRepo(db *gorm.DB) BaitRepository {
-	return &MySQLBaitRepo{DB: db}
-}
-
-// List 获取所有诱饵
-func (r *MySQLBaitRepo) List() ([]Bait, error) {
-	var baits []Bait
-	result := r.DB.Preload("Instance").Find(&baits)
-	return baits, result.Error
-}
-
-// GetByID 根据ID获取诱饵
-func (r *MySQLBaitRepo) GetByID(id uint) (*Bait, error) {
-	var bait Bait
-	result := r.DB.Preload("Instance").First(&bait, id)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &bait, nil
-}
-
-// Create 创建诱饵
-func (r *MySQLBaitRepo) Create(bait *Bait) error {
-	bait.CreateTime = time.Now()
-	return r.DB.Create(bait).Error
-}
-
-// Update 更新诱饵
-func (r *MySQLBaitRepo) Update(bait *Bait) error {
-	return r.DB.Save(bait).Error
-}
-
-// Delete 删除诱饵
-func (r *MySQLBaitRepo) Delete(id uint) error {
-	return r.DB.Delete(&Bait{}, id).Error
-}
-
-// UpdateDeployStatus 更新诱饵部署状态
-func (r *MySQLBaitRepo) UpdateDeployStatus(id uint, isDeployed bool) error {
-	return r.DB.Model(&Bait{}).Where("id = ?", id).
-		Update("is_deployed", isDeployed).Error
-}
-
 // -------------------- 安全规则仓库 --------------------
 
 // MySQLSecurityRuleRepo 安全规则MySQL仓库

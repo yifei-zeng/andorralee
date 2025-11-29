@@ -35,16 +35,6 @@ type HoneypotLogRepository interface {
 	Delete(id uint) error
 }
 
-// BaitRepository 诱饵仓库接口
-type BaitRepository interface {
-	List() ([]Bait, error)
-	GetByID(id uint) (*Bait, error)
-	Create(bait *Bait) error
-	Update(bait *Bait) error
-	Delete(id uint) error
-	UpdateDeployStatus(id uint, isDeployed bool) error
-}
-
 // SecurityRuleRepository 安全规则仓库接口
 type SecurityRuleRepository interface {
 	List() ([]SecurityRule, error)
@@ -130,6 +120,23 @@ type HeraldingAuthLogRepository interface {
 	GetTopAttackers(limit int) ([]AttackerIPStatistics, error)
 	GetTopUsernames(limit int) ([]map[string]interface{}, error)
 	GetTopPasswords(limit int) ([]map[string]interface{}, error)
+}
+
+// HeraldingSessionLogRepository Heralding会话日志仓库接口
+type HeraldingSessionLogRepository interface {
+	List() ([]HeraldingSessionLog, error)
+	GetByID(id uint) (*HeraldingSessionLog, error)
+	GetBySessionID(sessionID string) (*HeraldingSessionLog, error)
+	GetBySourceIP(sourceIP string) ([]HeraldingSessionLog, error)
+	GetByContainerID(containerID string) ([]HeraldingSessionLog, error)
+	GetLatestByContainerID(containerID string) (*HeraldingSessionLog, error)
+	GetByProtocol(protocol string) ([]HeraldingSessionLog, error)
+	GetByTimeRange(startTime, endTime time.Time) ([]HeraldingSessionLog, error)
+	Create(log *HeraldingSessionLog) error
+	CreateBatch(logs []HeraldingSessionLog) error
+	Update(log *HeraldingSessionLog) error
+	Delete(id uint) error
+	DeleteByContainerID(containerID string) error
 }
 
 // CowrieLogRepository Cowrie蜜罐日志仓库接口

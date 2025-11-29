@@ -5,11 +5,9 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/docker/docker/client"
-	dameng "github.com/godoes/gorm-dameng"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -17,19 +15,11 @@ import (
 var (
 	DockerCli *client.Client
 	MySQLDB   *gorm.DB
-	DamengDB  *gorm.DB
 )
 
 // Config 应用配置
 type Config struct {
 	MySQL struct {
-		Host     string
-		Port     string
-		User     string
-		Password string
-		Database string
-	}
-	Dameng struct {
 		Host     string
 		Port     string
 		User     string
@@ -48,13 +38,6 @@ func LoadConfig() *Config {
 	config.MySQL.User = getEnv("MYSQL_USER", "root")
 	config.MySQL.Password = getEnv("MYSQL_PASSWORD", "123456")
 	config.MySQL.Database = getEnv("MYSQL_DATABASE", "andorralee")
-
-	// 达梦数据库配置
-	config.Dameng.Host = getEnv("DAMENG_HOST", "localhost")
-	config.Dameng.Port = getEnv("DAMENG_PORT", "5236")
-	config.Dameng.User = getEnv("DAMENG_USER", "SYSDBA")
-	config.Dameng.Password = getEnv("DAMENG_PASSWORD", "Dm123456")
-	config.Dameng.Database = getEnv("DAMENG_DATABASE", "DOCKER_OPS")
 
 	return config
 }
@@ -90,8 +73,8 @@ func InitDockerClient() error {
 	return nil
 }
 
-// InitMySQL 初始化 MySQL 数据库
-func InitMySQL() error {
+// InitDatabase 初始化数据库
+func InitDatabase() error {
 	config := LoadConfig()
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		config.MySQL.User,
@@ -103,56 +86,19 @@ func InitMySQL() error {
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{DisableForeignKeyConstraintWhenMigrating: true})
 	if err != nil {
-		fmt.Println("MySQL 连接失败: " + err.Error())
+		fmt.Println("数据库连接失败: " + err.Error())
 		return err
 	}
 
 	MySQLDB = db
-	fmt.Println("MySQL 数据库连接成功")
-	return nil
-}
-
-// InitDameng 初始化达梦数据库
-func InitDameng() error {
-	config := LoadConfig()
-
-	options := map[string]string{
-		"schema":         "SYSDBA",
-		"appName":        "Andorralee Docker API",
-		"connectTimeout": "30000",
-	}
-
-	// 将端口号转换为整数
-	port, err := strconv.Atoi(config.Dameng.Port)
-	if err != nil {
-		return fmt.Errorf("无效的端口号: %v", err)
-	}
-
-	// 构建达梦数据库连接字符串
-	dsn := dameng.BuildUrl(
-		config.Dameng.User,
-		config.Dameng.Password,
-		config.Dameng.Host,
-		port,
-		options,
-	)
-
-	// 使用 GORM 打开达梦数据库连接
-	db, err := gorm.Open(dameng.Open(dsn), &gorm.Config{DisableForeignKeyConstraintWhenMigrating: true})
-	if err != nil {
-		fmt.Println("达梦数据库连接失败: " + err.Error())
-		return err
-	}
-
-	DamengDB = db
-	// 不在这里打印连接成功消息，只在main.go中打印
+	fmt.Println("数据库连接成功")
 	return nil
 }
 
 // InitTables 初始化数据库表
 func InitTables() error {
 	if MySQLDB == nil {
-		return fmt.Errorf("MySQL数据库未初始化")
+		return fmt.Errorf("数据库未初始化")
 	}
 
 	// 自动迁移数据库表结构
@@ -161,7 +107,6 @@ func InitTables() error {
 		&repositories.HoneypotTemplate{},
 		&repositories.HoneypotInstance{},
 		&repositories.HoneypotLog{},
-		&repositories.Bait{},
 		&repositories.SecurityRule{},
 		&repositories.RuleLog{},
 		&repositories.DockerImage{},
@@ -178,7 +123,6 @@ func InitTables() error {
 		&repositories.ScanResult{},
 		&repositories.DetectionResult{},
 		&repositories.ThreatIntelligence{},
-		&repositories.HoneytokenEvent{},
 	)
 
 	if err != nil {
@@ -187,48 +131,10 @@ func InitTables() error {
 			fmt.Println("警告: 检测到 uk_session_id 被外键依赖，保持现有索引并继续")
 			return nil
 		}
-		fmt.Println("MySQL数据库表初始化失败: " + err.Error())
+		fmt.Println("数据库表初始化失败: " + err.Error())
 		return err
 	}
 
-	fmt.Println("MySQL数据库表初始化成功")
-	return nil
-}
-
-// InitDamengTables 初始化达梦数据库表
-func InitDamengTables() error {
-	if DamengDB == nil {
-		return fmt.Errorf("达梦数据库未初始化")
-	}
-
-	// 自动迁移数据库表结构
-	err := DamengDB.AutoMigrate(
-		&repositories.HoneypotTemplate{},
-		&repositories.HoneypotInstance{},
-		&repositories.HoneypotLog{},
-		&repositories.Bait{},
-		&repositories.SecurityRule{},
-		&repositories.RuleLog{},
-		&repositories.DockerImage{},
-		&repositories.DockerImageLog{},
-		&repositories.ContainerLogSegment{},
-		&repositories.DockerContainer{},
-		&repositories.HeraldingAuthLog{},
-		&repositories.CowrieLog{},
-		&repositories.MalwareSignature{},
-		&repositories.ScanResult{},
-		&repositories.DetectionResult{},
-		&repositories.AttackSession{},
-		&repositories.AttackEvent{},
-		&repositories.ThreatIntelligence{},
-		&repositories.HoneytokenEvent{},
-	)
-
-	if err != nil {
-		fmt.Println("达梦数据库表初始化失败: " + err.Error())
-		return err
-	}
-
-	fmt.Println("达梦数据库表初始化成功")
+	fmt.Println("数据库表初始化成功")
 	return nil
 }
