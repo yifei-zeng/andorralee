@@ -20,17 +20,19 @@ import (
 
 // HeraldingService Heralding认证日志服务
 type HeraldingService struct {
-	Repo repositories.HeraldingAuthLogRepository
+	Repo        repositories.HeraldingAuthLogRepository
+	SessionRepo repositories.HeraldingSessionLogRepository
 }
 
 // NewHeraldingService 创建Heralding服务
 func NewHeraldingService() (*HeraldingService, error) {
 	if config.MySQLDB == nil {
-		return nil, fmt.Errorf("MySQL数据库未初始化")
+		return nil, fmt.Errorf("数据库未初始化")
 	}
 
 	return &HeraldingService{
-		Repo: repositories.NewMySQLHeraldingAuthLogRepo(config.MySQLDB),
+		Repo:        repositories.NewMySQLHeraldingAuthLogRepo(config.MySQLDB),
+		SessionRepo: repositories.NewMySQLHeraldingSessionLogRepo(config.MySQLDB),
 	}, nil
 }
 
@@ -45,13 +47,27 @@ func (s *HeraldingService) PullHeraldingLogs(containerID string) error {
 		return fmt.Errorf("容器ID不能为空")
 	}
 
-	csvContent, err := s.readHeraldingLogsFromContainer(containerID)
+	// 1. 处理认证日志 (log_auth.csv)
+	if err := s.processAuthLogs(containerID); err != nil {
+		log.Printf("处理认证日志失败: %v", err)
+	}
+
+	// 2. 处理会话日志 (log_session.csv)
+	if err := s.processSessionLogs(containerID); err != nil {
+		log.Printf("处理会话日志失败: %v", err)
+	}
+
+	return nil
+}
+
+// processAuthLogs 处理认证日志
+func (s *HeraldingService) processAuthLogs(containerID string) error {
+	csvContent, err := s.readHeraldingLogsFromContainer(containerID, "auth")
 	if err != nil {
-		return fmt.Errorf("读取容器日志失败: %w", err)
+		return fmt.Errorf("读取容器认证日志失败: %w", err)
 	}
 
 	if len(csvContent) == 0 {
-		log.Printf("容器 %s 未找到可用的Heralding日志", containerID)
 		return nil
 	}
 
@@ -71,8 +87,38 @@ func (s *HeraldingService) PullHeraldingLogs(containerID string) error {
 			return fmt.Errorf("保存日志到数据库失败: %v", err)
 		}
 		log.Printf("成功从容器 %s 拉取并保存了 %d 条Heralding认证日志", containerID, len(logs))
-	} else {
-		log.Printf("容器 %s 没有新的Heralding认证日志", containerID)
+	}
+
+	return nil
+}
+
+// processSessionLogs 处理会话日志
+func (s *HeraldingService) processSessionLogs(containerID string) error {
+	csvContent, err := s.readHeraldingLogsFromContainer(containerID, "session")
+	if err != nil {
+		return fmt.Errorf("读取容器会话日志失败: %w", err)
+	}
+
+	if len(csvContent) == 0 {
+		return nil
+	}
+
+	var latestTimestamp time.Time
+	if latest, err := s.SessionRepo.GetLatestByContainerID(containerID); err == nil && latest != nil {
+		latestTimestamp = latest.Timestamp
+	}
+
+	logs, err := s.parseSessionCSVLogs(csvContent, containerID, latestTimestamp)
+	if err != nil {
+		return fmt.Errorf("解析会话CSV日志失败: %v", err)
+	}
+
+	// 批量保存到数据库
+	if len(logs) > 0 {
+		if err := s.SessionRepo.CreateBatch(logs); err != nil {
+			return fmt.Errorf("保存会话日志到数据库失败: %v", err)
+		}
+		log.Printf("成功从容器 %s 拉取并保存了 %d 条Heralding会话日志", containerID, len(logs))
 	}
 
 	return nil
@@ -174,8 +220,96 @@ func (s *HeraldingService) parseCSVLogs(csvContent []byte, containerID string, l
 	return logs, nil
 }
 
+// parseSessionCSVLogs 解析会话CSV格式的日志
+func (s *HeraldingService) parseSessionCSVLogs(csvContent []byte, containerID string, latestTimestamp time.Time) ([]repositories.HeraldingSessionLog, error) {
+	reader := csv.NewReader(bytes.NewReader(csvContent))
+	reader.FieldsPerRecord = -1
+	reader.TrimLeadingSpace = true
+	records, err := reader.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("解析CSV失败: %v", err)
+	}
+
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	// determine header
+	var dataRecords [][]string
+	headers := defaultHeraldingSessionHeader()
+	if len(records) > 0 {
+		firstLine := strings.ToLower(strings.Join(records[0], ","))
+		if strings.Contains(firstLine, "timestamp") || strings.Contains(firstLine, "session_id") {
+			headers = buildHeraldingHeader(records[0])
+			dataRecords = records[1:]
+		} else {
+			dataRecords = records
+		}
+	}
+	if len(dataRecords) == 0 {
+		return nil, nil
+	}
+
+	var logs []repositories.HeraldingSessionLog
+	containerName := s.getContainerName(containerID)
+	seen := make(map[string]struct{})
+	for idx, record := range dataRecords {
+		if len(record) == 0 {
+			continue
+		}
+
+		timestampStr := getCSVField(record, headers, "timestamp", "time")
+		timestamp, err := parseHeraldingTimestamp(timestampStr)
+		if err != nil {
+			log.Printf("跳过Heralding会话记录 %d，时间格式无效: %v", idx+1, err)
+			continue
+		}
+		if !latestTimestamp.IsZero() && timestamp.Before(latestTimestamp) {
+			continue
+		}
+
+		sessionID := getCSVField(record, headers, "session_id", "session")
+		if sessionID == "" {
+			sessionID = uuid.New().String()
+		}
+		if _, exists := seen[sessionID]; exists {
+			continue
+		}
+		if existing, _ := s.SessionRepo.GetBySessionID(sessionID); existing != nil {
+			continue
+		}
+
+		duration := parseInt64Field(getCSVField(record, headers, "duration"))
+		sourceIP := getCSVField(record, headers, "source_ip", "src_ip", "remote_ip")
+		sourcePort := parseUintField(getCSVField(record, headers, "source_port", "src_port"))
+		destinationIP := getCSVField(record, headers, "destination_ip", "dst_ip", "target_ip")
+		destinationPort := parseUintField(getCSVField(record, headers, "destination_port", "dst_port", "target_port"))
+		protocol := strings.ToLower(getCSVField(record, headers, "protocol", "transport"))
+		numAuthAttempts := parseIntField(getCSVField(record, headers, "num_auth_attempts", "auth_attempts"))
+
+		logEntry := repositories.HeraldingSessionLog{
+			Timestamp:       timestamp,
+			Duration:        duration,
+			SessionID:       sessionID,
+			SourceIP:        sourceIP,
+			SourcePort:      sourcePort,
+			DestinationIP:   destinationIP,
+			DestinationPort: destinationPort,
+			Protocol:        protocol,
+			NumAuthAttempts: numAuthAttempts,
+			ContainerID:     containerID,
+			ContainerName:   containerName,
+		}
+
+		logs = append(logs, logEntry)
+		seen[sessionID] = struct{}{}
+	}
+
+	return logs, nil
+}
+
 // readHeraldingLogsFromContainer 从容器中读取Heralding日志文件
-func (s *HeraldingService) readHeraldingLogsFromContainer(containerID string) ([]byte, error) {
+func (s *HeraldingService) readHeraldingLogsFromContainer(containerID string, logType string) ([]byte, error) {
 	if config.DockerCli == nil {
 		return nil, fmt.Errorf("Docker客户端未初始化")
 	}
@@ -184,26 +318,53 @@ func (s *HeraldingService) readHeraldingLogsFromContainer(containerID string) ([
 	if custom := strings.TrimSpace(os.Getenv("HERALDING_LOG_PATH")); custom != "" {
 		candidatePaths = append(candidatePaths, custom)
 	}
-	candidatePaths = append(candidatePaths,
-		"/var/log/heralding/auth.csv",
-		"/var/log/heralding/auth.log",
-		"/var/log/heralding/auth.csv",
-		"/var/log/heralding/auth.log",
-		"/opt/heralding/logs/auth.csv",
-		"/opt/heralding/logs/auth.log",
-		"/data/logs/heralding/auth.csv",
-		"/data/logs/heralding/auth.log",
-	)
+
+	if logType == "auth" {
+		candidatePaths = append(candidatePaths,
+			"/log_auth.csv",
+			"log_auth.csv",
+			"/var/log/heralding/auth.csv",
+			"/var/log/heralding/auth.log",
+			"/opt/heralding/logs/auth.csv",
+			"/opt/heralding/logs/auth.log",
+			"/data/logs/heralding/auth.csv",
+			"/data/logs/heralding/auth.log",
+		)
+	} else if logType == "session" {
+		candidatePaths = append(candidatePaths,
+			"/log_session.csv",
+			"log_session.csv",
+			"/var/log/heralding/session.csv",
+			"/var/log/heralding/session.log",
+			"/opt/heralding/logs/session.csv",
+			"/opt/heralding/logs/session.log",
+			"/data/logs/heralding/session.csv",
+			"/data/logs/heralding/session.log",
+		)
+	}
 
 	var lastErr error
-	for _, logPath := range candidatePaths {
-		reader, _, err := config.DockerCli.CopyFromContainer(context.Background(), containerID, logPath)
+	for _, path := range candidatePaths {
+		path = strings.TrimSpace(path)
+		if path == "" {
+			continue
+		}
+
+		reader, _, err := config.DockerCli.CopyFromContainer(context.Background(), containerID, path)
 		if err != nil {
 			lastErr = err
 			continue
 		}
 
-		content, err := io.ReadAll(reader)
+		tr := tar.NewReader(reader)
+		_, err = tr.Next() // 读取第一个文件头
+		if err != nil {
+			reader.Close()
+			lastErr = err
+			continue
+		}
+
+		content, err := io.ReadAll(tr)
 		reader.Close()
 		if err != nil {
 			return nil, fmt.Errorf("读取日志内容失败: %w", err)
@@ -269,9 +430,9 @@ func (s *HeraldingService) extractLatestCSV(tarData []byte) ([]byte, error) {
 	return selected.data, nil
 }
 
-func buildHeraldingHeader(header []string) map[string]int {
-	result := make(map[string]int, len(header))
-	for idx, column := range header {
+func buildHeraldingHeader(headerRow []string) map[string]int {
+	result := make(map[string]int, len(headerRow))
+	for idx, column := range headerRow {
 		column = strings.TrimSpace(column)
 		column = strings.TrimPrefix(column, "\ufeff")
 		column = strings.ToLower(column)
@@ -284,8 +445,33 @@ func buildHeraldingHeader(header []string) map[string]int {
 }
 
 func defaultHeraldingHeader() map[string]int {
-	headers := []string{"timestamp", "auth_id", "session_id", "source_ip", "source_port", "destination_ip", "destination_port", "protocol", "username", "password", "password_hash"}
-	return buildHeraldingHeader(headers)
+	return map[string]int{
+		"timestamp":        0,
+		"auth_id":          1,
+		"session_id":       2,
+		"source_ip":        3,
+		"source_port":      4,
+		"destination_ip":   5,
+		"destination_port": 6,
+		"protocol":         7,
+		"username":         8,
+		"password":         9,
+		"password_hash":    10,
+	}
+}
+
+func defaultHeraldingSessionHeader() map[string]int {
+	return map[string]int{
+		"timestamp":         0,
+		"duration":          1,
+		"session_id":        2,
+		"source_ip":         3,
+		"source_port":       4,
+		"destination_ip":    5,
+		"destination_port":  6,
+		"protocol":          7,
+		"num_auth_attempts": 8,
+	}
 }
 
 func getCSVField(record []string, header map[string]int, keys ...string) string {
@@ -327,6 +513,28 @@ func parseUintField(value string) uint {
 	}
 	if v, err := strconv.ParseUint(value, 10, 32); err == nil {
 		return uint(v)
+	}
+	return 0
+}
+
+func parseIntField(value string) int {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0
+	}
+	if v, err := strconv.Atoi(value); err == nil {
+		return v
+	}
+	return 0
+}
+
+func parseInt64Field(value string) int64 {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0
+	}
+	if v, err := strconv.ParseInt(value, 10, 64); err == nil {
+		return v
 	}
 	return 0
 }

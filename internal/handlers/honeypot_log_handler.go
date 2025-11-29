@@ -19,7 +19,7 @@ import (
 // @Router /honeypot/logs [get]
 func GetAllHoneypotLogs(c *gin.Context) {
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -50,7 +50,7 @@ func GetHoneypotLogByID(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -81,7 +81,7 @@ func GetLogsByInstanceID(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 

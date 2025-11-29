@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -215,65 +214,7 @@ func GetAttackSession(c *gin.Context) {
 	})
 }
 
-// SaveHoneytokenEvent 保存蜜签事件
-func SaveHoneytokenEvent(c *gin.Context) {
-	if dbService == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "数据库服务未初始化")
-		return
-	}
-
-	var event repositories.HoneytokenEvent
-	if err := c.ShouldBindJSON(&event); err != nil {
-		utils.ResponseError(c, http.StatusBadRequest, "请求参数错误: "+err.Error())
-		return
-	}
-
-	// 验证必填字段
-	if event.TokenType == "" || event.TokenID == "" {
-		utils.ResponseError(c, http.StatusBadRequest, "蜜签类型和蜜签ID为必填字段")
-		return
-	}
-
-	// 设置默认值
-	if event.ThreatLevel == "" {
-		event.ThreatLevel = "medium"
-	}
-
-	if err := dbService.SaveHoneytokenEvent(&event); err != nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "保存蜜签事件失败: "+err.Error())
-		return
-	}
-
-	utils.ResponseSuccess(c, event)
-}
-
 // GetHoneytokenEvents 获取蜜签事件历史
-func GetHoneytokenEvents(c *gin.Context) {
-	limitStr := c.DefaultQuery("limit", "100")
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit <= 0 {
-		limit = 100
-	}
-	if limit > 1000 {
-		limit = 1000
-	}
-
-	if dbService == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "数据库服务未初始化")
-		return
-	}
-
-	events, err := dbService.GetHoneytokenEvents(limit)
-	if err != nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "获取蜜签事件失败: "+err.Error())
-		return
-	}
-
-	utils.ResponseSuccess(c, map[string]interface{}{
-		"events": events,
-		"total":  len(events),
-	})
-}
 
 // GetThreatAssessment 获取威胁评估
 func GetThreatAssessment(c *gin.Context) {
@@ -335,13 +276,6 @@ func calculateThreatScore(attackStats, threatStats map[string]interface{}) map[s
 		score += int(infectedFiles) * 20
 		riskFactors = append(riskFactors, fmt.Sprintf("检测到%d个感染文件", infectedFiles))
 		recommendations = append(recommendations, "隔离感染文件，更新防病毒规则")
-	}
-
-	// 检查蜜签触发
-	if honeytokenTriggers, ok := threatStats["honeytoken_triggers"].(int64); ok && honeytokenTriggers > 0 {
-		score += int(honeytokenTriggers) * 15
-		riskFactors = append(riskFactors, fmt.Sprintf("蜜签被触发%d次", honeytokenTriggers))
-		recommendations = append(recommendations, "分析蜜签触发原因，加强监控")
 	}
 
 	// 确定威胁等级

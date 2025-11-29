@@ -19,7 +19,7 @@ import (
 // @Router /rules [get]
 func GetAllRules(c *gin.Context) {
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -50,7 +50,7 @@ func GetRuleByID(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -81,7 +81,7 @@ func CreateRule(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -121,7 +121,7 @@ func UpdateRule(c *gin.Context) {
 	rule.ID = uint(id)
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -151,7 +151,7 @@ func DeleteRule(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -181,7 +181,7 @@ func EnableRule(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -217,7 +217,7 @@ func DisableRule(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 

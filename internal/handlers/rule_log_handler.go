@@ -19,7 +19,7 @@ import (
 // @Router /rules/logs [get]
 func GetAllRuleLogs(c *gin.Context) {
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -50,7 +50,7 @@ func GetRuleLogByID(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -81,7 +81,7 @@ func GetLogsByRuleID(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 

@@ -408,3 +408,63 @@ func DeleteHeraldingLogsByContainer(c *gin.Context) {
 
 	utils.ResponseSuccess(c, "容器认证日志删除成功")
 }
+
+// GetHeraldingSessionLogsByContainer 根据容器ID获取heralding会话日志
+// @Summary 根据容器ID获取heralding会话日志
+// @Description 根据容器ID获取指定的heralding会话日志记录
+// @Tags Heralding会话日志
+// @Produce json
+// @Param container_id path string true "容器ID"
+// @Success 200 {object} utils.Response
+// @Router /heralding/session-logs/container/{container_id} [get]
+func GetHeraldingSessionLogsByContainer(c *gin.Context) {
+	containerID := c.Param("container_id")
+	if containerID == "" {
+		utils.ResponseError(c, http.StatusBadRequest, "容器ID不能为空")
+		return
+	}
+
+	service, err := services.NewHeraldingService()
+	if err != nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
+		return
+	}
+
+	logs, err := service.SessionRepo.GetByContainerID(containerID)
+	if err != nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "获取日志失败: "+err.Error())
+		return
+	}
+
+	utils.ResponseSuccess(c, logs)
+}
+
+// GetHeraldingSessionLogsBySessionID 根据会话ID获取heralding会话日志
+// @Summary 根据会话ID获取heralding会话日志
+// @Description 根据会话ID获取指定的heralding会话日志记录
+// @Tags Heralding会话日志
+// @Produce json
+// @Param session_id path string true "会话ID"
+// @Success 200 {object} utils.Response
+// @Router /heralding/session-logs/session/{session_id} [get]
+func GetHeraldingSessionLogsBySessionID(c *gin.Context) {
+	sessionID := c.Param("session_id")
+	if sessionID == "" {
+		utils.ResponseError(c, http.StatusBadRequest, "会话ID不能为空")
+		return
+	}
+
+	service, err := services.NewHeraldingService()
+	if err != nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "创建服务失败: "+err.Error())
+		return
+	}
+
+	log, err := service.SessionRepo.GetBySessionID(sessionID)
+	if err != nil {
+		utils.ResponseError(c, http.StatusInternalServerError, "获取日志失败: "+err.Error())
+		return
+	}
+
+	utils.ResponseSuccess(c, log)
+}

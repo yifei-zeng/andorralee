@@ -91,7 +91,7 @@ var honeypotTemplates = []HoneypotTemplate{
 		Protocol:    "mysql",
 		ImageName:   "qeeqbox/honeypots:latest",
 		DefaultPort: 3306,
-		Description: "MySQL数据库蜜罐，模拟MySQL服务器",
+		Description: "数据库蜜罐，模拟MySQL服务器",
 		Environment: map[string]string{
 			"HONEYPOT_TYPE": "mysql",
 			"LOG_LEVEL":     "info",
