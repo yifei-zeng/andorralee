@@ -64,17 +64,6 @@ type RuleLog struct {
 	Rule     SecurityRule `json:"rule" gorm:"foreignKey:RuleID"`
 }
 
-// Bait 诱饵模型
-type Bait struct {
-	ID         uint             `json:"id" gorm:"primaryKey"`
-	Name       string           `json:"name" gorm:"size:50;not null;comment:诱饵名称"`
-	FileType   string           `json:"file_type" gorm:"size:10;not null;comment:文件类型"`
-	IsDeployed bool             `json:"is_deployed" gorm:"default:0;comment:投放状态(1已投放,0未投放)"`
-	CreateTime time.Time        `json:"create_time" gorm:"not null;comment:创建时间"`
-	InstanceID uint             `json:"instance_id" gorm:"comment:关联蜜罐实例"`
-	Instance   HoneypotInstance `json:"instance" gorm:"foreignKey:InstanceID"`
-}
-
 // TableName 设置表名
 func (HoneypotTemplate) TableName() string {
 	return "honeypot_template"
@@ -94,10 +83,6 @@ func (HoneypotLog) TableName() string {
 
 func (RuleLog) TableName() string {
 	return "rule_log"
-}
-
-func (Bait) TableName() string {
-	return "bait"
 }
 
 // DockerImage Docker镜像模型
@@ -172,32 +157,46 @@ func (DockerContainer) TableName() string {
 // HeraldingAuthLog Heralding认证日志模型
 type HeraldingAuthLog struct {
 	ID              uint      `json:"id" gorm:"primaryKey"`
-	Timestamp       time.Time `json:"timestamp" gorm:"type:datetime(6);not null;comment:捕获到认证行为的时间戳"`
-	AuthID          string    `json:"auth_id" gorm:"size:36;not null;uniqueIndex;comment:此次认证行为的唯一ID"`
-	SessionID       string    `json:"session_id" gorm:"size:36;not null;index;comment:所属会话ID"`
-	SourceIP        string    `json:"source_ip" gorm:"size:45;not null;index;comment:攻击者IP"`
-	SourcePort      uint      `json:"source_port" gorm:"not null;comment:攻击者使用的端口"`
-	DestinationIP   string    `json:"destination_ip" gorm:"size:45;not null;index;comment:被攻击的蜜罐容器IP"`
+	Timestamp       time.Time `json:"timestamp" gorm:"type:datetime(6);not null;comment:认证时间"`
+	AuthID          string    `json:"auth_id" gorm:"size:36;not null;uniqueIndex;comment:认证ID"`
+	SessionID       string    `json:"session_id" gorm:"size:36;not null;index;comment:会话ID"`
+	SourceIP        string    `json:"source_ip" gorm:"size:45;not null;index;comment:源IP"`
+	SourcePort      uint      `json:"source_port" gorm:"not null;comment:源端口"`
+	DestinationIP   string    `json:"destination_ip" gorm:"size:45;not null;comment:目标IP"`
 	DestinationPort uint      `json:"destination_port" gorm:"not null;comment:目标端口"`
-	Protocol        string    `json:"protocol" gorm:"size:20;not null;index;comment:使用的协议"`
-	Username        string    `json:"username" gorm:"size:255;not null;index;comment:攻击者输入的用户名"`
-	Password        string    `json:"password" gorm:"size:255;not null;comment:攻击者输入的密码"`
-	PasswordHash    string    `json:"password_hash" gorm:"size:255;comment:密码hash值"`
-	ContainerID     string    `json:"container_id" gorm:"size:64;index;comment:关联的容器ID"`
+	Protocol        string    `json:"protocol" gorm:"size:20;not null;comment:协议"`
+	Username        string    `json:"username" gorm:"size:255;comment:用户名"`
+	Password        string    `json:"password" gorm:"size:255;comment:密码"`
+	PasswordHash    string    `json:"password_hash" gorm:"size:255;comment:密码哈希"`
+	ContainerID     string    `json:"container_id" gorm:"size:64;comment:关联容器ID"`
 	ContainerName   string    `json:"container_name" gorm:"size:100;comment:容器名称"`
 	CreatedAt       time.Time `json:"created_at" gorm:"not null;comment:记录创建时间"`
 }
 
-// HeraldingAuthStatistics Heralding认证统计模型
+// HeraldingSessionLog Heralding会话日志模型
+type HeraldingSessionLog struct {
+	ID              uint      `json:"id" gorm:"primaryKey"`
+	Timestamp       time.Time `json:"timestamp" gorm:"type:datetime(6);not null;comment:会话开始时间"`
+	Duration        int64     `json:"duration" gorm:"comment:会话持续时间(毫秒)"`
+	SessionID       string    `json:"session_id" gorm:"size:36;not null;uniqueIndex;comment:会话ID"`
+	SourceIP        string    `json:"source_ip" gorm:"size:45;not null;index;comment:源IP"`
+	SourcePort      uint      `json:"source_port" gorm:"not null;comment:源端口"`
+	DestinationIP   string    `json:"destination_ip" gorm:"size:45;not null;comment:目标IP"`
+	DestinationPort uint      `json:"destination_port" gorm:"not null;comment:目标端口"`
+	Protocol        string    `json:"protocol" gorm:"size:20;not null;comment:协议"`
+	NumAuthAttempts int       `json:"num_auth_attempts" gorm:"default:0;comment:认证尝试次数"`
+	ContainerID     string    `json:"container_id" gorm:"size:64;comment:关联容器ID"`
+	ContainerName   string    `json:"container_name" gorm:"size:100;comment:容器名称"`
+}
+
+// HeraldingAuthStatistics Heralding认证统计视图
 type HeraldingAuthStatistics struct {
-	LogDate         string    `json:"log_date"`
-	Protocol        string    `json:"protocol"`
-	TotalAttempts   int       `json:"total_attempts"`
-	UniqueIPs       int       `json:"unique_ips"`
-	UniqueUsernames int       `json:"unique_usernames"`
-	UniqueSessions  int       `json:"unique_sessions"`
-	FirstAttempt    time.Time `json:"first_attempt"`
-	LastAttempt     time.Time `json:"last_attempt"`
+	LogDate        string    `json:"log_date"`
+	Protocol       string    `json:"protocol"`
+	TotalAttempts  int       `json:"total_attempts"`
+	UniqueIPs      int       `json:"unique_ips"`
+	UniqueSessions int       `json:"unique_sessions"`
+	LastAttempt    time.Time `json:"last_attempt"`
 }
 
 // AttackerIPStatistics 攻击者IP统计模型
@@ -214,6 +213,10 @@ type AttackerIPStatistics struct {
 
 func (HeraldingAuthLog) TableName() string {
 	return "heralding_auth_log"
+}
+
+func (HeraldingSessionLog) TableName() string {
+	return "heralding_session_log"
 }
 
 // CowrieLog Cowrie蜜罐日志模型
@@ -422,24 +425,6 @@ type ThreatIntelligence struct {
 	UpdatedAt      time.Time `json:"updated_at" gorm:"comment:更新时间"`
 }
 
-// HoneytokenEvent 蜜签事件模型
-type HoneytokenEvent struct {
-	ID           uint      `json:"id" gorm:"primaryKey"`
-	TokenID      string    `json:"token_id" gorm:"size:36;not null;index;comment:蜜签ID"`
-	TokenType    string    `json:"token_type" gorm:"size:50;not null;comment:蜜签类型"`
-	TokenName    string    `json:"token_name" gorm:"size:100;comment:蜜签名称"`
-	TriggerTime  time.Time `json:"trigger_time" gorm:"not null;comment:触发时间"`
-	SourceIP     string    `json:"source_ip" gorm:"size:45;not null;index;comment:触发者IP"`
-	UserAgent    string    `json:"user_agent" gorm:"type:text;comment:用户代理"`
-	RequestPath  string    `json:"request_path" gorm:"size:500;comment:请求路径"`
-	RequestData  string    `json:"request_data" gorm:"type:text;comment:请求数据"`
-	ResponseCode int       `json:"response_code" gorm:"comment:响应码"`
-	Location     string    `json:"location" gorm:"size:255;comment:蜜签位置"`
-	Description  string    `json:"description" gorm:"type:text;comment:描述"`
-	ThreatLevel  string    `json:"threat_level" gorm:"size:20;comment:威胁等级"`
-	IsProcessed  bool      `json:"is_processed" gorm:"default:0;comment:是否已处理"`
-}
-
 // TableName 设置表名
 func (MalwareSignature) TableName() string {
 	return "malware_signature"
@@ -463,8 +448,4 @@ func (AttackEvent) TableName() string {
 
 func (ThreatIntelligence) TableName() string {
 	return "threat_intelligence"
-}
-
-func (HoneytokenEvent) TableName() string {
-	return "honeytoken_event"
 }

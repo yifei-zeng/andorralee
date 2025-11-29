@@ -46,7 +46,7 @@ Andorralee 是一款基于 Go 语言开发的企业级蜜罐诱捕系统，专�
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Web前端界面   │────│   Go后端服务     │────│   MySQL数据库   │
+│   Web前端界面   │────│   Go后端服务     │────│   数据库   │
 │  (React.js)     │    │   (Gin框架)      │    │   (持久化存储)  │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                                 │
@@ -62,7 +62,7 @@ Andorralee 是一款基于 Go 语言开发的企业级蜜罐诱捕系统，专�
 ### 环境要求
 - Go 1.21+
 - Docker & Docker Compose
-- MySQL 8.0+ 或 达梦数据库
+- 关系型数据库引擎（推荐 8.0+ 兼容版本）
 - Git
 
 ### 1. 克隆项目
@@ -111,7 +111,7 @@ docker-compose logs -f
 | `COWRIE_AUTO_ENABLED` | `true` 时后台定期自动拉取 Cowrie 日志 | `false` |
 | `COWRIE_SYNTHETIC_ENABLED` | `true` 时启用演示环境的合成日志生成 | `false` |
 | `HERALDING_LOG_PATH` | 指向 Heralding/Heralding CSV 认证日志，未设置时尝试 `/var/log/heralding` 等常见目录 | 自动检测 |
-| `MYSQL_HONEYPOT_LOG_PATH` | 指向 MySQL 蜜罐的 JSON/LOG 日志文件路径，未设置时会遍历 `/var/log/mysql-honeypot*.log` 等路径 | 自动检测 |
+| `MYSQL_HONEYPOT_LOG_PATH` | 指向数据库蜜罐的 JSON/LOG 日志文件路径，未设置时会遍历 `/var/log/mysql-honeypot*.log` 等路径 | 自动检测 |
 
 ## 📖 API文档
 

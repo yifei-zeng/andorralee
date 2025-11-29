@@ -167,7 +167,7 @@ curl "http://localhost:8080/api/v1/heralding/attacker-statistics"
 
 ### 1. 当前限制
 - 日志拉取功能使用模拟数据（需要根据实际容器环境调整）
-- 需要确保MySQL数据库连接正常
+- 需要确保数据库连接正常
 - 建议定期清理历史数据
 
 ### 2. 性能建议

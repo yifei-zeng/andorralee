@@ -103,17 +103,6 @@ func SetupRouter() *gin.Engine {
 			}
 		}
 
-		// ------------------------------ 诱饵(蜜签)管理接口 ------------------------------
-		baits := api.Group("/baits")
-		{
-			baits.GET("", handlers.GetAllBaits)
-			baits.GET("/:id", handlers.GetBaitByID)
-			baits.POST("", handlers.CreateBait)
-			baits.PUT("/:id", handlers.UpdateBait)
-			baits.DELETE("/:id", handlers.DeleteBait)
-			baits.POST("/:id/deploy", handlers.DeployBait)
-		}
-
 		// ------------------------------ 安全规则管理接口 ------------------------------
 		rules := api.Group("/rules")
 		{
@@ -134,37 +123,28 @@ func SetupRouter() *gin.Engine {
 			}
 		}
 
-		// ------------------------------ 数据库操作接口 ------------------------------
-		// 查询数据库字段（支持 MySQL 和达梦）
-		data := api.Group("/data")
-		{
-			data.GET("", handlers.QueryData)
-			data.POST("", handlers.CreateData)
-			data.PUT("", handlers.UpdateData)
-			data.DELETE("", handlers.DeleteData)
-			data.GET("/id", handlers.GetDataByID)
-			data.GET("/name", handlers.GetDataByName)
-		}
-
 		// ------------------------------ Heralding认证日志接口 ------------------------------
 		heralding := api.Group("/heralding")
 		{
 			// 日志拉取和管理
-			heralding.POST("/pull-logs", handlers.PullHeraldingLogs)                                   // 拉取认证日志
-			heralding.GET("/logs", handlers.GetAllHeraldingLogs)                                       // 获取所有日志
-			heralding.GET("/logs/:id", handlers.GetHeraldingLogByID)                                   // 根据ID获取日志
-			heralding.GET("/logs/container/:container_id", handlers.GetHeraldingLogsByContainer)       // 根据容器ID获取日志
-			heralding.GET("/logs/source-ip/:source_ip", handlers.GetHeraldingLogsBySourceIP)           // 根据源IP获取日志
-			heralding.GET("/logs/protocol/:protocol", handlers.GetHeraldingLogsByProtocol)             // 根据协议获取日志
-			heralding.GET("/logs/time-range", handlers.GetHeraldingLogsByTimeRange)                    // 根据时间范围获取日志
+			heralding.POST("/pull-logs", handlers.PullHeraldingLogs)                             // 拉取认证日志
+			heralding.GET("/logs", handlers.GetAllHeraldingLogs)                                 // 获取所有日志
+			heralding.GET("/logs/:id", handlers.GetHeraldingLogByID)                             // 根据ID获取日志
+			heralding.GET("/logs/container/:container_id", handlers.GetHeraldingLogsByContainer) // 根据容器ID获取日志
+			// heralding.GET("/logs/session/:session_id", handlers.GetHeraldingLogsBySessionID)           // 根据会话ID获取日志
+			heralding.GET("/logs/ip/:source_ip", handlers.GetHeraldingLogsBySourceIP)      // 根据源IP获取日志
+			heralding.GET("/logs/protocol/:protocol", handlers.GetHeraldingLogsByProtocol) // 根据协议获取日志
+			heralding.GET("/logs/time-range", handlers.GetHeraldingLogsByTimeRange)        // 根据时间范围获取日志
+			heralding.GET("/statistics", handlers.GetHeraldingStatistics)                  // 获取统计信息
+			// heralding.GET("/statistics/attacker-ips", handlers.GetHeraldingAttackerIPStatistics) // 获取攻击者IP统计
+			// heralding.GET("/statistics/top-attackers", handlers.GetHeraldingTopAttackers)               // 获取顶级攻击者
+			// heralding.GET("/statistics/top-usernames", handlers.GetHeraldingTopUsernames)               // 获取常用用户名
+			// heralding.GET("/statistics/top-passwords", handlers.GetHeraldingTopPasswords)               // 获取常用密码
 			heralding.DELETE("/logs/container/:container_id", handlers.DeleteHeraldingLogsByContainer) // 删除容器相关日志
 
-			// 统计和分析
-			heralding.GET("/statistics", handlers.GetHeraldingStatistics)           // 获取统计信息
-			heralding.GET("/attacker-statistics", handlers.GetAttackerIPStatistics) // 获取攻击者IP统计
-			heralding.GET("/top-attackers", handlers.GetTopAttackers)               // 获取顶级攻击者
-			heralding.GET("/top-usernames", handlers.GetTopUsernames)               // 获取常用用户名
-			heralding.GET("/top-passwords", handlers.GetTopPasswords)               // 获取常用密码
+			// 新增会话日志接口
+			heralding.GET("/session-logs/container/:container_id", handlers.GetHeraldingSessionLogsByContainer)
+			heralding.GET("/session-logs/session/:session_id", handlers.GetHeraldingSessionLogsBySessionID)
 		}
 
 		// ------------------------------ Cowrie蜜罐日志接口 ------------------------------
@@ -263,19 +243,6 @@ func SetupRouter() *gin.Engine {
 			honeypotTemplates.GET("/protocols", handlers.GetSupportedProtocols)        // 获取支持的协议
 		}
 
-		// ------------------------------ 蜜签管理接口 ------------------------------
-		honeyTokens := api.Group("/honeytokens")
-		{
-			honeyTokens.POST("", handlers.CreateHoneyToken)                  // 创建蜜签
-			honeyTokens.GET("", handlers.GetAllHoneyTokens)                  // 获取所有蜜签
-			honeyTokens.GET("/:id", handlers.GetHoneyTokenByID)              // 根据ID获取蜜签
-			honeyTokens.PUT("/:id", handlers.UpdateHoneyToken)               // 更新蜜签
-			honeyTokens.DELETE("/:id", handlers.DeleteHoneyToken)            // 删除蜜签
-			honeyTokens.POST("/:id/trigger", handlers.TriggerHoneyToken)     // 触发蜜签
-			honeyTokens.GET("/triggers", handlers.GetHoneyTokenTriggers)     // 获取触发记录
-			honeyTokens.GET("/statistics", handlers.GetHoneyTokenStatistics) // 获取统计信息
-		}
-
 		// ------------------------------ 攻击捕获接口 ------------------------------
 		attackCapture := api.Group("/attack-capture")
 		{
@@ -370,13 +337,6 @@ func SetupRouter() *gin.Engine {
 
 			// 统计信息
 			threat.GET("/statistics", handlers.GetThreatAssessment) // 获取威胁评估
-		}
-
-		// ------------------------------ 蜜签事件接口 ------------------------------
-		honeytoken := api.Group("/honeytoken")
-		{
-			honeytoken.POST("/events", handlers.SaveHoneytokenEvent) // 保存蜜签事件
-			honeytoken.GET("/events", handlers.GetHoneytokenEvents)  // 获取蜜签事件历史
 		}
 
 		// ------------------------------ 容器日志分析接口 ------------------------------
