@@ -64,13 +64,9 @@ func HealthCheck(c *gin.Context) {
 		Services: make(map[string]ServiceInfo),
 	}
 
-	// 检查MySQL数据库连接
+	// 检查数据库连接
 	mysqlStatus := checkMySQLHealth()
 	health.Services["mysql"] = mysqlStatus
-
-	// 检查达梦数据库连接
-	damengStatus := checkDamengHealth()
-	health.Services["dameng"] = damengStatus
 
 	// 检查Docker服务
 	dockerStatus := checkDockerHealth()
@@ -94,18 +90,18 @@ func HealthCheck(c *gin.Context) {
 
 // getEnvironment 获取运行环境
 func getEnvironment() string {
-	if config.MySQLDB != nil || config.DamengDB != nil {
+	if config.MySQLDB != nil {
 		return "production"
 	}
 	return "development"
 }
 
-// checkMySQLHealth 检查MySQL数据库健康状态
+// checkMySQLHealth 检查数据库健康状态
 func checkMySQLHealth() ServiceInfo {
 	if config.MySQLDB == nil {
 		return ServiceInfo{
 			Status:  "unavailable",
-			Message: "MySQL数据库未初始化",
+			Message: "数据库未初始化",
 		}
 	}
 
@@ -114,51 +110,20 @@ func checkMySQLHealth() ServiceInfo {
 	if err != nil {
 		return ServiceInfo{
 			Status:  "error",
-			Message: "无法获取MySQL数据库连接: " + err.Error(),
+			Message: "无法获取数据库连接: " + err.Error(),
 		}
 	}
 
 	if err := sqlDB.Ping(); err != nil {
 		return ServiceInfo{
 			Status:  "error",
-			Message: "MySQL数据库连接失败: " + err.Error(),
+			Message: "数据库连接失败: " + err.Error(),
 		}
 	}
 
 	return ServiceInfo{
 		Status:  "healthy",
-		Message: "MySQL数据库连接正常",
-	}
-}
-
-// checkDamengHealth 检查达梦数据库健康状态
-func checkDamengHealth() ServiceInfo {
-	if config.DamengDB == nil {
-		return ServiceInfo{
-			Status:  "unavailable",
-			Message: "达梦数据库未初始化",
-		}
-	}
-
-	// 尝试ping数据库
-	sqlDB, err := config.DamengDB.DB()
-	if err != nil {
-		return ServiceInfo{
-			Status:  "error",
-			Message: "无法获取达梦数据库连接: " + err.Error(),
-		}
-	}
-
-	if err := sqlDB.Ping(); err != nil {
-		return ServiceInfo{
-			Status:  "error",
-			Message: "达梦数据库连接失败: " + err.Error(),
-		}
-	}
-
-	return ServiceInfo{
-		Status:  "healthy",
-		Message: "达梦数据库连接正常",
+		Message: "数据库连接正常",
 	}
 }
 
@@ -247,13 +212,11 @@ func ReadinessCheck(c *gin.Context) {
 
 	// 检查数据库连接（至少一个数据库可用）
 	mysqlReady := config.MySQLDB != nil
-	damengReady := config.DamengDB != nil
 
 	services["mysql"] = mysqlReady
-	services["dameng"] = damengReady
 
 	// 至少需要一个数据库可用
-	if !mysqlReady && !damengReady {
+	if !mysqlReady {
 		ready = false
 	}
 

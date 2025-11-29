@@ -14,10 +14,10 @@ import (
 
 func main() {
 	var (
-		user   = flag.String("user", getenv("DB_USER", "root"), "MySQL 用户名")
-		pass   = flag.String("password", getenv("DB_PASSWORD", "123456"), "MySQL 密码")
-		host   = flag.String("host", getenv("DB_HOST", "127.0.0.1"), "MySQL 主机")
-		port   = flag.String("port", getenv("DB_PORT", "3306"), "MySQL 端口")
+		user   = flag.String("user", getenv("DB_USER", "root"), "数据库用户名")
+		pass   = flag.String("password", getenv("DB_PASSWORD", "123456"), "数据库密码")
+		host   = flag.String("host", getenv("DB_HOST", "127.0.0.1"), "数据库主机")
+		port   = flag.String("port", getenv("DB_PORT", "3306"), "数据库端口")
 		script = flag.String("script", filepath.Join("deployment", "bootstrap_schema.sql"), "SQL 脚本路径")
 	)
 	flag.Parse()

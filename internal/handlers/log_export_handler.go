@@ -48,8 +48,6 @@ func ExportLogs(c *gin.Context) {
 	switch req.LogType {
 	case "attack":
 		logs, err = exportAttackLogs(req)
-	case "honeytokens":
-		logs, err = exportHoneyTokenLogs(req)
 	case "containers":
 		logs, err = exportContainerLogs(req)
 	case "all":
@@ -123,43 +121,6 @@ func exportAttackLogs(req LogExportRequest) ([]map[string]interface{}, error) {
 	return logs, nil
 }
 
-// exportHoneyTokenLogs 导出蜜签日志
-func exportHoneyTokenLogs(req LogExportRequest) ([]map[string]interface{}, error) {
-	triggerMutex.RLock()
-	defer triggerMutex.RUnlock()
-
-	var logs []map[string]interface{}
-	for _, trigger := range tokenTriggers {
-		// 时间过滤
-		if !req.StartTime.IsZero() && trigger.TriggerTime.Before(req.StartTime) {
-			continue
-		}
-		if !req.EndTime.IsZero() && trigger.TriggerTime.After(req.EndTime) {
-			continue
-		}
-
-		// IP过滤
-		if req.SourceIP != "" && trigger.SourceIP != req.SourceIP {
-			continue
-		}
-
-		log := map[string]interface{}{
-			"id":         trigger.ID,
-			"timestamp":  trigger.TriggerTime.Format(time.RFC3339),
-			"token_id":   trigger.TokenID,
-			"token_name": trigger.TokenName,
-			"source_ip":  trigger.SourceIP,
-			"user_agent": trigger.UserAgent,
-			"action":     trigger.Action,
-			"details":    trigger.Details,
-			"log_type":   "honeytoken",
-		}
-		logs = append(logs, log)
-	}
-
-	return logs, nil
-}
-
 // exportContainerLogs 导出容器日志
 func exportContainerLogs(req LogExportRequest) ([]map[string]interface{}, error) {
 	instanceMutex.RLock()
@@ -214,13 +175,6 @@ func exportAllLogs(req LogExportRequest) ([]map[string]interface{}, error) {
 		return nil, err
 	}
 	allLogs = append(allLogs, attackLogs...)
-
-	// 蜜签日志
-	tokenLogs, err := exportHoneyTokenLogs(req)
-	if err != nil {
-		return nil, err
-	}
-	allLogs = append(allLogs, tokenLogs...)
 
 	// 容器日志
 	containerLogs, err := exportContainerLogs(req)
@@ -351,11 +305,10 @@ func exportCSV(c *gin.Context, logs []map[string]interface{}, logType string) {
 // GetLogStatistics 获取日志统计信息
 func GetLogStatistics(c *gin.Context) {
 	stats := map[string]interface{}{
-		"attack_logs":     len(attackEvents),
-		"honeytoken_logs": len(tokenTriggers),
-		"container_logs":  len(memoryInstances),
-		"total_logs":      len(attackEvents) + len(tokenTriggers) + len(memoryInstances),
-		"last_updated":    time.Now().Format(time.RFC3339),
+		"attack_logs":    len(attackEvents),
+		"container_logs": len(memoryInstances),
+		"total_logs":     len(attackEvents) + len(memoryInstances),
+		"last_updated":   time.Now().Format(time.RFC3339),
 	}
 
 	utils.ResponseSuccess(c, stats)

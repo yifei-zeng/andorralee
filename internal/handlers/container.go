@@ -10,7 +10,7 @@ import (
 
 // StartContainerRequest 启动容器请求参数
 type StartContainerRequest struct {
-	Image   string            `json:"image" binding:"required"` // 镜像名称（如 andorralee/dm8:v0.1）
+	Image   string            `json:"image" binding:"required"` // 镜像名称（如 andorralee/cowrie:v0.1）
 	Name    string            `json:"name"`                     // 容器名称
 	PortMap map[string]string `json:"port_map"`                 // 端口映射（如 {"80/tcp": "8080"}）
 	EnvVars map[string]string `json:"env_vars"`                 // 环境变量

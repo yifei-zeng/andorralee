@@ -23,7 +23,6 @@ temp/
 *.swo
 
 # 本地数据库文件
-dm_home/
 
 # Docker相关文件
 Dockerfile

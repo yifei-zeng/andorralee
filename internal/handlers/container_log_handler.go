@@ -19,7 +19,7 @@ import (
 // @Router /container-logs/segments [get]
 func GetAllContainerLogSegments(c *gin.Context) {
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -50,7 +50,7 @@ func GetContainerLogSegmentByID(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -80,7 +80,7 @@ func GetLogSegmentsByContainerID(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -110,7 +110,7 @@ func GetLogSegmentsByType(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -141,7 +141,7 @@ func DeleteContainerLogSegment(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 
@@ -170,7 +170,7 @@ func DeleteLogSegmentsByContainerID(c *gin.Context) {
 	}
 
 	if config.MySQLDB == nil {
-		utils.ResponseError(c, http.StatusInternalServerError, "MySQL数据库未初始化")
+		utils.ResponseError(c, http.StatusInternalServerError, "数据库未初始化")
 		return
 	}
 

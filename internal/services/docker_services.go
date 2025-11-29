@@ -23,7 +23,7 @@ type DockerImageService struct {
 // NewDockerImageService 创建Docker镜像服务
 func NewDockerImageService() (*DockerImageService, error) {
 	if config.MySQLDB == nil {
-		return nil, fmt.Errorf("MySQL数据库未初始化")
+		return nil, fmt.Errorf("数据库未初始化")
 	}
 
 	return &DockerImageService{

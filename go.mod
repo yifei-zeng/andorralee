@@ -1,13 +1,12 @@
 module andorralee
 
-go 1.23.4
+go 1.24
 
 require github.com/gin-gonic/gin v1.10.0 // Web 框架
 
 require (
 	github.com/docker/docker v28.0.4+incompatible
 	github.com/docker/go-connections v0.5.0
-	github.com/godoes/gorm-dameng v0.6.1
 	gorm.io/driver/mysql v1.5.7
 	gorm.io/gorm v1.26.1
 )
@@ -15,7 +14,6 @@ require (
 require (
 	github.com/go-sql-driver/mysql v1.9.1
 	github.com/google/uuid v1.6.0
-	github.com/yeka/zip v0.0.0-20231116150916-03d6312748a9
 )
 
 require (
@@ -37,7 +35,6 @@ require (
 	github.com/go-playground/validator/v10 v10.25.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/snappy v1.0.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
