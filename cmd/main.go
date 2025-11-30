@@ -33,9 +33,9 @@ func main() {
 	// 初始化路由
 	r := routers.SetupRouter() // 通过路由包获取已配置的 Gin 引擎
 
-	fmt.Println("服务启动中，监听端口: 9090...")
+	fmt.Println("服务启动中，监听端口: 8848...")
 	// 启动服务
-	err := r.Run(":9090")
+	err := r.Run(":8848")
 	if err != nil {
 		fmt.Println("服务启动失败:", err)
 		return

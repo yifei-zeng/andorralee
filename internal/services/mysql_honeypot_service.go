@@ -451,12 +451,28 @@ func (s *MySQLHoneypotService) GetLogsBySourceIP(sourceIP string) ([]repositorie
 	return s.Repo.GetBySourceIP(sourceIP)
 }
 
+func (s *MySQLHoneypotService) GetLogsByDestinationIP(destinationIP string) ([]repositories.MySQLHoneypotLog, error) {
+	return s.Repo.GetByDestinationIP(destinationIP)
+}
+
 func (s *MySQLHoneypotService) GetLogsByUsername(username string) ([]repositories.MySQLHoneypotLog, error) {
 	return s.Repo.GetByUsername(username)
 }
 
+func (s *MySQLHoneypotService) GetLogsByDatabaseName(databaseName string) ([]repositories.MySQLHoneypotLog, error) {
+	return s.Repo.GetByDatabaseName(databaseName)
+}
+
 func (s *MySQLHoneypotService) GetLogsByTimeRange(startTime, endTime time.Time) ([]repositories.MySQLHoneypotLog, error) {
 	return s.Repo.GetByTimeRange(startTime, endTime)
+}
+
+func (s *MySQLHoneypotService) GetLogsByQueryKeyword(keyword string, limit int) ([]repositories.MySQLHoneypotLog, error) {
+	return s.Repo.GetByQueryKeyword(keyword, limit)
+}
+
+func (s *MySQLHoneypotService) GetLogsByErrorCode(code string) ([]repositories.MySQLHoneypotLog, error) {
+	return s.Repo.GetByErrorCode(code)
 }
 
 func (s *MySQLHoneypotService) DeleteLogsByContainer(containerID string) error {
@@ -465,4 +481,8 @@ func (s *MySQLHoneypotService) DeleteLogsByContainer(containerID string) error {
 
 func (s *MySQLHoneypotService) GetQueryStatistics(limit int) ([]repositories.MySQLHoneypotStatistics, error) {
 	return s.Repo.GetQueryStatistics(limit)
+}
+
+func (s *MySQLHoneypotService) SearchLogs(filter repositories.MySQLHoneypotSearchFilter) ([]repositories.MySQLHoneypotLog, error) {
+	return s.Repo.Search(filter)
 }

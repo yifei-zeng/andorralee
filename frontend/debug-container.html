@@ -3,600 +3,735 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>容器实例调试工具</title>
+    <title>蜜罐系统综合调试工具</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Microsoft YaHei', Arial, sans-serif;
-            margin: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1, h2 {
-            color: #333;
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 10px;
-        }
-        .section {
-            margin: 20px 0;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background: #fafafa;
-        }
-        .button-group {
-            margin: 10px 0;
-        }
-        button {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            margin: 5px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        button:hover {
-            background: #0056b3;
-        }
-        button.danger {
-            background: #dc3545;
-        }
-        button.danger:hover {
-            background: #c82333;
-        }
-        button.success {
-            background: #28a745;
-        }
-        button.success:hover {
-            background: #218838;
-        }
-        .result {
-            margin: 10px 0;
+            font-family: 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             padding: 10px;
-            border-radius: 4px;
-            background: #f8f9fa;
-            border-left: 4px solid #007bff;
-            white-space: pre-wrap;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            max-height: 400px;
-            overflow-y: auto;
         }
-        .error {
-            border-left-color: #dc3545;
-            background: #f8d7da;
+        .main-container { max-width: 1400px; margin: 0 auto; }
+        .header {
+            background: white; padding: 20px; border-radius: 8px;
+            margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        .success {
-            border-left-color: #28a745;
-            background: #d4edda;
+        .header h1 { color: #333; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        .status-bar {
+            display: flex; gap: 20px; margin-top: 15px; flex-wrap: wrap;
         }
-        input, select {
-            padding: 8px;
-            margin: 5px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
+        .status-item {
+            display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+            background: #f0f0f0; border-radius: 4px; font-size: 13px;
         }
+        .status-indicator {
+            width: 10px; height: 10px; border-radius: 50%; background: #ccc;
+        }
+        .status-indicator.healthy { background: #28a745; }
+        .status-indicator.warning { background: #ffc107; }
+        .status-indicator.error { background: #dc3545; }
+        
+        .tabs {
+            display: flex; gap: 0; background: white; border-radius: 8px 8px 0 0;
+            overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 0;
+        }
+        .tab-btn {
+            flex: 1; padding: 15px; background: #f8f9fa; border: none;
+            cursor: pointer; font-size: 14px; font-weight: 500; color: #666;
+            border-bottom: 3px solid transparent; transition: all 0.3s;
+        }
+        .tab-btn:hover { background: #f0f0f0; color: #333; }
+        .tab-btn.active { background: white; color: #667eea; border-bottom-color: #667eea; }
+        
+        .tab-content {
+            display: none; background: white; padding: 20px;
+            border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .tab-content.active { display: block; }
+        
+        .section {
+            margin: 20px 0; padding: 15px; border: 1px solid #e0e0e0;
+            border-radius: 6px; background: #fafafa;
+        }
+        .section h3 {
+            color: #333; margin-bottom: 15px; display: flex; align-items: center;
+            gap: 8px; border-bottom: 2px solid #667eea; padding-bottom: 10px;
+        }
+        
         .form-group {
-            margin: 10px 0;
+            margin: 12px 0; display: flex; gap: 10px;
+            align-items: center; flex-wrap: wrap;
         }
-        label {
-            display: inline-block;
-            width: 120px;
-            font-weight: bold;
+        label { font-weight: 500; color: #333; min-width: 120px; }
+        
+        input, select, textarea {
+            padding: 10px; border: 1px solid #ddd; border-radius: 4px;
+            font-size: 14px; font-family: inherit; flex: 1; min-width: 200px;
         }
-        .container-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
+        input:focus, select:focus, textarea:focus {
+            outline: none; border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
-        .container-item {
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 15px;
-            background: white;
+        
+        .button-group { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+        button {
+            padding: 10px 16px; border: none; border-radius: 4px; cursor: pointer;
+            font-size: 14px; font-weight: 500; transition: all 0.3s;
         }
-        .container-item h4 {
-            margin: 0 0 10px 0;
-            color: #007bff;
+        button:hover { transform: translateY(-2px); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { background: #5568d3; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover { background: #218838; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-danger:hover { background: #c82333; }
+        .btn-info { background: #17a2b8; color: white; }
+        .btn-info:hover { background: #138496; }
+        .btn-warning { background: #ffc107; color: #333; }
+        .btn-warning:hover { background: #e0a800; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #5a6268; }
+        .btn-sm { padding: 6px 10px; font-size: 12px; }
+        
+        .result-panel {
+            margin: 15px 0; padding: 15px; border-radius: 4px;
+            background: #f8f9fa; border-left: 4px solid #667eea;
+            max-height: 500px; overflow-y: auto;
+            font-family: 'Courier New', monospace; font-size: 12px;
+            white-space: pre-wrap; word-break: break-all;
         }
-        .status {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 3px;
-            font-size: 12px;
-            font-weight: bold;
-            text-transform: uppercase;
+        .result-panel.error {
+            border-left-color: #dc3545; background: #f8d7da; color: #721c24;
         }
-        .status.running {
-            background: #d4edda;
-            color: #155724;
+        .result-panel.success {
+            border-left-color: #28a745; background: #d4edda; color: #155724;
         }
-        .status.stopped {
-            background: #f8d7da;
-            color: #721c24;
+        .result-panel.info {
+            border-left-color: #17a2b8; background: #d1ecf1; color: #0c5460;
         }
-        .status.created {
-            background: #fff3cd;
-            color: #856404;
+        
+        .grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px; margin: 15px 0;
         }
-        .status.deleted {
-            background: #f1f3f4;
-            color: #5f6368;
+        .card {
+            border: 1px solid #e0e0e0; border-radius: 6px; padding: 15px;
+            background: white; transition: all 0.3s;
         }
-
-        /* 镜像相关样式 */
-        .image-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 15px;
-            margin-top: 10px;
+        .card:hover {
+            transform: translateY(-4px); box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
-
-        .image-card {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            background: #f0f8ff;
-            transition: transform 0.2s;
+        .card h4 {
+            color: #333; margin-bottom: 10px; display: flex;
+            align-items: center; gap: 8px;
         }
-
-        .image-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        .card p { margin: 8px 0; color: #666; font-size: 13px; line-height: 1.5; }
+        .card .badge {
+            display: inline-block; padding: 4px 8px; border-radius: 3px;
+            font-size: 11px; font-weight: 500; margin-right: 5px;
         }
-
-        .image-actions {
-            margin-top: 10px;
+        .badge.running { background: #d4edda; color: #155724; }
+        .badge.stopped { background: #f8d7da; color: #721c24; }
+        .badge.created { background: #fff3cd; color: #856404; }
+        .badge.mysql { background: #e2e3e5; color: #383d41; }
+        .badge.cowrie { background: #cfe2ff; color: #084298; }
+        .badge.heralding { background: #d1e7dd; color: #0f5132; }
+        
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px; margin: 15px 0;
         }
-
-        .image-actions button {
-            margin-right: 5px;
-            margin-bottom: 5px;
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; padding: 20px; border-radius: 6px; text-align: center;
         }
-
-        /* 预设镜像选择器样式 */
-        #presetImages {
-            width: 300px;
-            padding: 5px;
-            margin-left: 10px;
+        .stat-card .number { font-size: 32px; font-weight: bold; margin: 10px 0; }
+        .stat-card .label { font-size: 13px; opacity: 0.9; }
+        
+        .quick-actions {
+            display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;
         }
+        .quick-actions button { flex: 1; min-width: 120px; }
+        
+        .empty-state { text-align: center; padding: 40px 20px; color: #999; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🐳 容器实例调试工具</h1>
-        
-        <div class="section">
-            <h2>📋 基础操作</h2>
-            <div class="button-group">
-                <button onclick="getAllContainers()">获取所有容器实例</button>
-                <button onclick="syncContainerStatus()" class="success">同步容器状态</button>
-                <button onclick="checkDockerStatus()">检查Docker状态</button>
-                <button onclick="getHealthStatus()">健康检查</button>
+    <div class="main-container">
+        <div class="header">
+            <h1>🐳 蜜罐系统综合调试工具 v2.0</h1>
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="status-indicator" id="healthStatus"></span>
+                    <span id="healthText">检查中...</span>
+                </div>
+                <div class="status-item">
+                    <span>容器实例: <strong id="containerCount">0</strong></span>
+                </div>
+                <div class="status-item">
+                    <span>MySQL日志: <strong id="mysqlLogCount">0</strong></span>
+                </div>
+                <div class="status-item">
+                    <span>Cowrie日志: <strong id="cowrieLogCount">0</strong></span>
+                </div>
+                <button onclick="refreshStatus()" class="btn-secondary btn-sm">🔄 刷新状态</button>
             </div>
         </div>
 
-        <div class="section">
-            <h2>🐳 Docker镜像管理</h2>
-            <div class="form-group">
-                <label>镜像名称:</label>
-                <input type="text" id="pullImageName" placeholder="例如: nginx:latest" value="hello-world:latest">
-                <button onclick="pullImage()" class="success">拉取镜像</button>
-                <button onclick="getDockerImages()">获取镜像列表</button>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('docker')">🐳 Docker</button>
+            <button class="tab-btn" onclick="switchTab('mysql')">🗄️ MySQL蜜罐</button>
+            <button class="tab-btn" onclick="switchTab('cowrie')">🐚 Cowrie</button>
+            <button class="tab-btn" onclick="switchTab('heralding')">🔐 Heralding</button>
+            <button class="tab-btn" onclick="switchTab('analytics')">📊 统计</button>
+            <button class="tab-btn" onclick="switchTab('settings')">⚙️ 设置</button>
+        </div>
+
+        <!-- Docker标签页 -->
+        <div id="docker" class="tab-content active">
+            <div class="section">
+                <h3>📦 镜像管理</h3>
+                <div class="form-group">
+                    <input type="text" id="pullImageName" placeholder="镜像名称" value="mysql:8.0">
+                    <button onclick="pullImage()" class="btn-primary">拉取</button>
+                    <button onclick="getDockerImages()" class="btn-info">刷新</button>
+                </div>
+                <div class="quick-actions">
+                    <button onclick="pullPresetImage('mysql:8.0')" class="btn-secondary">MySQL</button>
+                    <button onclick="pullPresetImage('ubuntu:20.04')" class="btn-secondary">Ubuntu</button>
+                    <button onclick="pullPresetImage('nginx:latest')" class="btn-secondary">Nginx</button>
+                </div>
+                <div id="imageList" class="grid"></div>
             </div>
-            <div class="form-group">
-                <label>常用蜜罐镜像:</label>
-                <div class="button-group">
-                    <button onclick="pullPresetImage('andorralee/cowrie:v0.1')">Cowrie蜜罐</button>
-                    <button onclick="pullPresetImage('andorralee/heralding:v0.1')">Heralding蜜罐</button>
-                    <button onclick="pullPresetImage('ubuntu:20.04')">Ubuntu基础</button>
-                    <button onclick="pullPresetImage('nginx:latest')">Nginx Web</button>
-                    <button onclick="pullPresetImage('mysql:8.0')">通用数据库(mysql:8.0)</button>
+
+            <div class="section">
+                <h3>➕ 创建容器</h3>
+                <div class="form-group">
+                    <input type="text" id="containerName" placeholder="容器名称" value="test">
+                    <input type="text" id="imageName" placeholder="镜像名称" value="mysql:8.0">
+                    <select id="protocol"><option value="mysql">MySQL</option><option value="ssh">SSH</option><option value="http">HTTP</option></select>
+                    <button onclick="createContainer()" class="btn-success">创建</button>
                 </div>
             </div>
-            <div class="form-group">
-                <label>镜像操作:</label>
-                <input type="text" id="imageId" placeholder="输入镜像ID或名称">
-                <button onclick="getImageInfo()">获取镜像详情</button>
-                <button onclick="deleteImage()" class="danger">删除镜像</button>
+
+            <div class="section">
+                <h3>🔧 容器管理</h3>
+                <div class="form-group">
+                    <input type="number" id="containerId" placeholder="容器ID" min="1">
+                    <button onclick="startContainer()" class="btn-success">启动</button>
+                    <button onclick="stopContainer()" class="btn-warning">停止</button>
+                    <button onclick="restartContainer()" class="btn-info">重启</button>
+                    <button onclick="deleteContainer()" class="btn-danger">删除</button>
+                </div>
+                <div id="containerList" class="grid"></div>
             </div>
         </div>
 
-        <div class="section">
-            <h2>🔧 容器操作</h2>
-            <div class="form-group">
-                <label>容器ID:</label>
-                <input type="number" id="containerId" placeholder="输入容器ID" min="1">
-                <button onclick="getContainerInfo()">获取容器信息</button>
-                <button onclick="getDebugInfo()">调试信息</button>
+        <!-- MySQL蜜罐标签页 -->
+        <div id="mysql" class="tab-content">
+            <div class="section">
+                <h3>📥 日志拉取</h3>
+                <div class="form-group">
+                    <input type="text" id="mysqlContainerId" placeholder="容器ID">
+                    <button onclick="pullMySQLLogs()" class="btn-success">拉取日志</button>
+                </div>
+                <div id="mysqlPullResult" class="result-panel" style="display:none;"></div>
             </div>
-            <div class="button-group">
-                <button onclick="startContainer()" class="success">启动容器</button>
-                <button onclick="stopContainer()" class="danger">停止容器</button>
-                <button onclick="restartContainer()">重启容器</button>
-                <button onclick="deleteContainer()" class="danger">删除容器</button>
+
+            <div class="section">
+                <h3>🔍 查询筛选</h3>
+                <div class="form-group">
+                    <input type="text" id="mysqlSourceIP" placeholder="源IP">
+                    <button onclick="getMySQLLogsBySourceIP()" class="btn-primary">按源IP</button>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="mysqlDestIP" placeholder="目标IP">
+                    <button onclick="getMySQLLogsByDestIP()" class="btn-primary">按目标IP</button>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="mysqlUsername" placeholder="用户名">
+                    <button onclick="getMySQLLogsByUsername()" class="btn-primary">按用户名</button>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="mysqlDatabase" placeholder="数据库名">
+                    <button onclick="getMySQLLogsByDatabase()" class="btn-primary">按数据库</button>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="mysqlQueryKeyword" placeholder="SQL关键字">
+                    <input type="number" id="mysqlQueryLimit" value="100" max="500" style="max-width:100px;">
+                    <button onclick="getMySQLLogsByKeyword()" class="btn-primary">按关键字</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>🔎 综合搜索</h3>
+                <div class="form-group">
+                    <input type="text" id="mysqlSearchSourceIP" placeholder="源IP">
+                    <input type="text" id="mysqlSearchUsername" placeholder="用户名">
+                    <input type="datetime-local" id="mysqlSearchStartTime">
+                    <input type="datetime-local" id="mysqlSearchEndTime">
+                </div>
+                <div class="form-group">
+                    <button onclick="searchMySQLLogs()" class="btn-success">执行搜索</button>
+                    <button onclick="getAllMySQLLogs()" class="btn-info">全部日志</button>
+                    <button onclick="getMySQLStatistics()" class="btn-info">统计</button>
+                </div>
+                <div id="mysqlSearchResult" class="result-panel" style="display:none;"></div>
             </div>
         </div>
 
-        <div class="section">
-            <h2>➕ 创建容器</h2>
-            <div class="form-group">
-                <label>容器名称:</label>
-                <input type="text" id="containerName" placeholder="输入容器名称" value="test-container">
+        <!-- Cowrie蜜罐标签页 -->
+        <div id="cowrie" class="tab-content">
+            <div class="section">
+                <h3>📥 日志拉取</h3>
+                <div class="form-group">
+                    <input type="text" id="cowrieContainerId" placeholder="容器ID">
+                    <button onclick="pullCowrieLogs()" class="btn-success">拉取日志</button>
+                </div>
+                <div id="cowriePullResult" class="result-panel" style="display:none;"></div>
             </div>
-            <div class="form-group">
-                <label>镜像名称:</label>
-                <input type="text" id="imageName" placeholder="输入镜像名称" value="hello-world:latest">
-                <button onclick="getDockerImages()" style="margin-left: 10px;">刷新镜像列表</button>
-            </div>
-            <div class="form-group">
-                <label>常用镜像快选:</label>
-                <select id="presetImages" onchange="selectPresetImage()">
-                    <option value="">选择预设镜像...</option>
-                    <option value="hello-world:latest">hello-world:latest (测试)</option>
-                    <option value="ubuntu:20.04">ubuntu:20.04 (SSH蜜罐基础)</option>
-                    <option value="nginx:latest">nginx:latest (Web蜜罐)</option>
-                    <option value="mysql:8.0">mysql:8.0 (通用数据库)</option>
-                    <option value="andorralee/cowrie:v0.1">andorralee/cowrie:v0.1 (Cowrie蜜罐)</option>
-                    <option value="andorralee/heralding:v0.1">andorralee/heralding:v0.1 (Heralding蜜罐)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>协议:</label>
-                <select id="protocol">
-                    <option value="http">HTTP</option>
-                    <option value="ssh">SSH</option>
-                    <option value="ftp">FTP</option>
-                    <option value="telnet">Telnet</option>
-                </select>
-            </div>
-            <button onclick="createContainer()" class="success">创建容器实例</button>
-        </div>
 
-        <div class="section">
-            <h2>📊 结果显示</h2>
-            <div id="result" class="result">等待操作...</div>
-        </div>
+            <div class="section">
+                <h3>🔍 日志查询</h3>
+                <div class="form-group">
+                    <input type="text" id="cowrieSourceIP" placeholder="源IP">
+                    <button onclick="getCowrieLogsBySourceIP()" class="btn-primary">按源IP</button>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="cowrieUsername" placeholder="用户名">
+                    <button onclick="getCowrieLogsByUsername()" class="btn-primary">按用户名</button>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="cowrieCommand" placeholder="命令">
+                    <button onclick="getCowrieLogsByCommand()" class="btn-primary">按命令</button>
+                </div>
+            </div>
 
-        <div class="section">
-            <h2>📦 容器列表</h2>
-            <div id="containerList" class="container-list">
-                <p>点击"获取所有容器实例"来加载数据</p>
+            <div class="section">
+                <h3>📊 统计分析</h3>
+                <div class="button-group">
+                    <button onclick="getCowrieStatistics()" class="btn-info">整体统计</button>
+                    <button onclick="getCowrieTopAttackers()" class="btn-info">顶级攻击者</button>
+                    <button onclick="getCowrieTopCommands()" class="btn-info">常用命令</button>
+                    <button onclick="getCowrieTopUsernames()" class="btn-info">常用用户</button>
+                    <button onclick="getCowrieTopPasswords()" class="btn-info">常用密码</button>
+                </div>
+                <div id="cowrieStatsResult" class="result-panel" style="display:none;"></div>
             </div>
         </div>
 
-        <div class="section">
-            <h2>🖼️ Docker镜像列表</h2>
-            <div id="imageList" class="container-list">
-                <p>点击"获取镜像列表"来加载数据</p>
+        <!-- Heralding认证标签页 -->
+        <div id="heralding" class="tab-content">
+            <div class="section">
+                <h3>📥 日志拉取</h3>
+                <div class="form-group">
+                    <input type="text" id="heraldingContainerId" placeholder="容器ID">
+                    <button onclick="pullHeraldingLogs()" class="btn-success">拉取日志</button>
+                </div>
+                <div id="heraldingPullResult" class="result-panel" style="display:none;"></div>
+            </div>
+
+            <div class="section">
+                <h3>🔍 认证日志查询</h3>
+                <div class="form-group">
+                    <input type="text" id="heraldingSourceIP" placeholder="源IP">
+                    <button onclick="getHeraldingLogsBySourceIP()" class="btn-primary">按源IP</button>
+                </div>
+                <div class="form-group">
+                    <select id="heraldingProtocol">
+                        <option value="">选择协议</option>
+                        <option value="ssh">SSH</option>
+                        <option value="http">HTTP</option>
+                        <option value="ftp">FTP</option>
+                    </select>
+                    <button onclick="getHeraldingLogsByProtocol()" class="btn-primary">按协议</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>📊 Heralding统计</h3>
+                <button onclick="getHeraldingStatistics()" class="btn-info">获取统计</button>
+                <div id="heraldingStatsResult" class="result-panel" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- 统计分析标签页 -->
+        <div id="analytics" class="tab-content">
+            <div class="section">
+                <h3>📈 系统总体统计</h3>
+                <button onclick="getSystemDashboard()" class="btn-primary">刷新仪表盘</button>
+                <div id="dashboardStats" class="stats-grid"></div>
+            </div>
+
+            <div class="section">
+                <h3>📊 日志导出</h3>
+                <div class="form-group">
+                    <select id="exportType"><option value="all">所有日志</option><option value="mysql">MySQL</option><option value="cowrie">Cowrie</option></select>
+                    <select id="exportFormat"><option value="json">JSON</option><option value="csv">CSV</option></select>
+                    <button onclick="exportLogs()" class="btn-success">导出</button>
+                </div>
+                <div id="exportResult" class="result-panel" style="display:none;"></div>
+            </div>
+
+            <div class="section">
+                <h3>⚡ 性能监控</h3>
+                <button onclick="getLogStatistics()" class="btn-info">获取统计</button>
+                <div id="perfStats" class="result-panel" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- 系统设置标签页 -->
+        <div id="settings" class="tab-content">
+            <div class="section">
+                <h3>🔧 系统维护</h3>
+                <div class="button-group">
+                    <button onclick="getHealthStatus()" class="btn-info">健康检查</button>
+                    <button onclick="getReadinessStatus()" class="btn-info">就绪检查</button>
+                    <button onclick="getLivenessStatus()" class="btn-info">存活检查</button>
+                </div>
+                <div id="systemStatus" class="result-panel" style="display:none;"></div>
+            </div>
+
+            <div class="section">
+                <h3>🗑️ 数据清理</h3>
+                <div class="form-group">
+                    <input type="text" id="cleanContainerId" placeholder="容器ID">
+                    <select id="cleanType">
+                        <option value="mysql">清除MySQL日志</option>
+                        <option value="cowrie">清除Cowrie日志</option>
+                        <option value="heralding">清除Heralding日志</option>
+                    </select>
+                    <button onclick="cleanLogs()" class="btn-danger">执行清理</button>
+                </div>
+                <div id="cleanResult" class="result-panel" style="display:none;"></div>
+            </div>
+
+            <div class="section">
+                <h3>📝 操作日志</h3>
+                <button onclick="clearOperationLog()" class="btn-secondary">清除</button>
+                <button onclick="downloadOperationLog()" class="btn-info">下载</button>
+                <div id="operationLog" class="result-panel" style="max-height: 300px;">操作日志...</div>
             </div>
         </div>
     </div>
 
     <script>
         const API_BASE = '/api/v1';
+        const operationLogs = [];
         
-        function showResult(data, isError = false) {
-            const resultDiv = document.getElementById('result');
-            resultDiv.className = `result ${isError ? 'error' : 'success'}`;
-            resultDiv.textContent = JSON.stringify(data, null, 2);
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
         }
-
+        
+        function logOp(msg) {
+            operationLogs.unshift(`[${new Date().toLocaleTimeString()}] ${msg}`);
+            if (operationLogs.length > 100) operationLogs.pop();
+        }
+        
+        function showResult(elementId, data, isError = false) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            el.style.display = 'block';
+            el.className = `result-panel ${isError ? 'error' : 'success'}`;
+            el.textContent = JSON.stringify(data, null, 2);
+        }
+        
         async function apiCall(url, method = 'GET', data = null) {
             try {
-                const options = {
-                    method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                };
-                
-                if (data) {
-                    options.body = JSON.stringify(data);
-                }
-                
-                const response = await fetch(API_BASE + url, options);
-                const result = await response.json();
-                
-                if (!response.ok) {
-                    showResult({
-                        error: true,
-                        status: response.status,
-                        message: result.message || '请求失败',
-                        data: result
-                    }, true);
-                    return null;
-                }
-                
-                showResult(result);
+                const opts = { method, headers: { 'Content-Type': 'application/json' } };
+                if (data) opts.body = JSON.stringify(data);
+                const resp = await fetch(API_BASE + url, opts);
+                const result = await resp.json();
+                if (!resp.ok) return { error: true, status: resp.status, message: result.message || '请求失败' };
                 return result;
-            } catch (error) {
-                showResult({
-                    error: true,
-                    message: '网络错误: ' + error.message
-                }, true);
-                return null;
+            } catch (e) {
+                return { error: true, message: '网络错误: ' + e.message };
             }
         }
-
-        async function getAllContainers() {
-            const result = await apiCall('/container-instances');
-            if (result && result.data) {
-                displayContainerList(result.data);
-            }
-        }
-
-        async function syncContainerStatus() {
-            await apiCall('/container-instances/sync', 'POST');
-            // 同步后重新获取列表
-            setTimeout(getAllContainers, 1000);
-        }
-
-        async function checkDockerStatus() {
-            await apiCall('/docker/info');
-        }
-
-        async function getHealthStatus() {
-            await apiCall('/health');
-        }
-
-        // ==================== Docker镜像管理函数 ====================
-
-        // 拉取镜像
+        
+        // Docker函数
         async function pullImage() {
-            const imageName = document.getElementById('pullImageName').value.trim();
-            if (!imageName) {
-                alert('请输入镜像名称');
-                return;
-            }
-
-            // 解析镜像名称和标签
-            const [imageNamePart, tag] = imageName.includes(':') ?
-                imageName.split(':') : [imageName, 'latest'];
-
-            await apiCall('/docker/pull', 'POST', {
-                image_name: imageNamePart,
-                tag: tag
-            });
-
-            // 自动刷新镜像列表
-            setTimeout(() => getDockerImages(), 2000);
+            const name = document.getElementById('pullImageName').value.trim();
+            if (!name) { alert('请输入镜像名'); return; }
+            const [img, tag] = name.includes(':') ? name.split(':') : [name, 'latest'];
+            const r = await apiCall('/docker/pull', 'POST', { image_name: img, tag });
+            logOp('拉取镜像: ' + name);
+            setTimeout(getDockerImages, 2000);
         }
-
-        // 拉取预设镜像
-        async function pullPresetImage(imageName) {
-            document.getElementById('pullImageName').value = imageName;
-            await pullImage();
-        }
-
-        // 获取Docker镜像列表
+        
+        function pullPresetImage(name) { document.getElementById('pullImageName').value = name; pullImage(); }
+        
         async function getDockerImages() {
-            await apiCall('/docker/images');
+            const r = await apiCall('/docker/images');
+            const el = document.getElementById('imageList');
+            if (!r.data || r.data.length === 0) { el.innerHTML = '<div class="empty-state">没有镜像</div>'; return; }
+            el.innerHTML = r.data.map(img => {
+                const tag = (img.RepoTags || ['<none>:<none>'])[0];
+                const size = (img.Size / (1024*1024)).toFixed(2);
+                return `<div class="card"><h4>${tag}</h4><p>大小: ${size}MB</p><button onclick="selectImage('${tag}')" class="btn-success btn-sm">选择</button></div>`;
+            }).join('');
         }
-
-        // 获取镜像详情
-        async function getImageInfo() {
-            const imageId = document.getElementById('imageId').value.trim();
-            if (!imageId) {
-                alert('请输入镜像ID或名称');
-                return;
-            }
-
-            await apiCall(`/docker/images/${encodeURIComponent(imageId)}`);
-        }
-
-        // 删除镜像
-        async function deleteImage() {
-            const imageId = document.getElementById('imageId').value.trim();
-            if (!imageId) {
-                alert('请输入镜像ID或名称');
-                return;
-            }
-
-            if (!confirm(`确定要删除镜像 ${imageId} 吗？`)) {
-                return;
-            }
-
-            await apiCall(`/docker/images/${encodeURIComponent(imageId)}`, 'DELETE');
-
-            // 自动刷新镜像列表
-            setTimeout(() => getDockerImages(), 2000);
-        }
-
-        function getContainerId() {
-            const id = document.getElementById('containerId').value;
-            if (!id) {
-                alert('请输入容器ID');
-                return null;
-            }
-            return id;
-        }
-
-        async function getContainerInfo() {
-            const id = getContainerId();
-            if (id) {
-                await apiCall(`/container-instances/${id}`);
-            }
-        }
-
-        async function getDebugInfo() {
-            const id = getContainerId();
-            if (id) {
-                await apiCall(`/container-instances/${id}/debug`);
-            }
-        }
-
-        async function startContainer() {
-            const id = getContainerId();
-            if (id) {
-                await apiCall(`/container-instances/${id}/start`, 'POST');
-                setTimeout(getAllContainers, 1000);
-            }
-        }
-
-        async function stopContainer() {
-            const id = getContainerId();
-            if (id) {
-                await apiCall(`/container-instances/${id}/stop`, 'POST');
-                setTimeout(getAllContainers, 1000);
-            }
-        }
-
-        async function restartContainer() {
-            const id = getContainerId();
-            if (id) {
-                await apiCall(`/container-instances/${id}/restart`, 'POST');
-                setTimeout(getAllContainers, 1000);
-            }
-        }
-
-        async function deleteContainer() {
-            const id = getContainerId();
-            if (id && confirm('确定要删除这个容器实例吗？')) {
-                await apiCall(`/container-instances/${id}`, 'DELETE');
-                setTimeout(getAllContainers, 1000);
-            }
-        }
-
+        
+        function selectImage(name) { document.getElementById('imageName').value = name; }
+        
         async function createContainer() {
-            const name = document.getElementById('containerName').value;
-            const imageName = document.getElementById('imageName').value;
-            const protocol = document.getElementById('protocol').value;
-            
-            if (!name || !imageName) {
-                alert('请填写容器名称和镜像名称');
-                return;
-            }
-            
-            const data = {
-                name: name,
-                honeypot_name: name,
-                image_name: imageName,
-                protocol: protocol,
-                interface_type: "network",
-                port_mappings: {"80": "8080"},
-                environment: {"TEST": "true"},
-                description: "通过调试工具创建的测试容器"
-            };
-            
-            await apiCall('/container-instances', 'POST', data);
+            const n = document.getElementById('containerName').value;
+            const img = document.getElementById('imageName').value;
+            const p = document.getElementById('protocol').value;
+            if (!n || !img) { alert('请填写容器名和镜像'); return; }
+            const r = await apiCall('/container-instances', 'POST', { name: n, image_name: img, protocol: p });
+            logOp('创建容器: ' + n);
             setTimeout(getAllContainers, 1000);
         }
-
-        function displayContainerList(containers) {
-            const listDiv = document.getElementById('containerList');
-            
-            if (!containers || containers.length === 0) {
-                listDiv.innerHTML = '<p>没有找到容器实例</p>';
-                return;
-            }
-            
-            listDiv.innerHTML = containers.map(container => `
-                <div class="container-item">
-                    <h4>${container.name || '未命名'} (ID: ${container.id})</h4>
-                    <p><strong>状态:</strong> <span class="status ${container.status}">${container.status}</span></p>
-                    <p><strong>镜像:</strong> ${container.image_name || 'N/A'}</p>
-                    <p><strong>容器ID:</strong> ${container.container_id || '无'}</p>
-                    <p><strong>协议:</strong> ${container.protocol || 'N/A'}</p>
-                    <p><strong>端口:</strong> ${container.port || 'N/A'}</p>
-                    <p><strong>创建时间:</strong> ${new Date(container.create_time).toLocaleString()}</p>
-                    <div class="button-group">
-                        <button onclick="document.getElementById('containerId').value='${container.id}'; getDebugInfo()">调试</button>
-                        <button onclick="document.getElementById('containerId').value='${container.id}'; startContainer()" class="success">启动</button>
-                        <button onclick="document.getElementById('containerId').value='${container.id}'; stopContainer()" class="danger">停止</button>
-                    </div>
-                </div>
-            `).join('');
+        
+        async function getAllContainers() {
+            const r = await apiCall('/container-instances');
+            const el = document.getElementById('containerList');
+            if (!r.data || r.data.length === 0) { el.innerHTML = '<div class="empty-state">没有容器</div>'; return; }
+            document.getElementById('containerCount').textContent = r.data.length;
+            el.innerHTML = r.data.map(c => `<div class="card"><h4>${c.name} <span class="badge ${c.status}">${c.status}</span></h4><p>ID: ${c.id}</p><button onclick="quickStart(${c.id})" class="btn-success btn-sm">启动</button><button onclick="quickStop(${c.id})" class="btn-warning btn-sm">停止</button></div>`).join('');
         }
-
-        // 选择预设镜像
-        function selectPresetImage() {
-            const select = document.getElementById('presetImages');
-            const imageName = document.getElementById('imageName');
-            if (select.value) {
-                imageName.value = select.value;
-            }
+        
+        async function startContainer() { const id = document.getElementById('containerId').value; if (!id) return; await apiCall(`/container-instances/${id}/start`, 'POST'); logOp('启动容器: ' + id); setTimeout(getAllContainers, 1000); }
+        async function stopContainer() { const id = document.getElementById('containerId').value; if (!id) return; await apiCall(`/container-instances/${id}/stop`, 'POST'); logOp('停止容器: ' + id); setTimeout(getAllContainers, 1000); }
+        async function restartContainer() { const id = document.getElementById('containerId').value; if (!id) return; await apiCall(`/container-instances/${id}/restart`, 'POST'); logOp('重启容器: ' + id); setTimeout(getAllContainers, 1000); }
+        async function deleteContainer() { const id = document.getElementById('containerId').value; if (!id || !confirm('确定?')) return; await apiCall(`/container-instances/${id}`, 'DELETE'); logOp('删除容器: ' + id); setTimeout(getAllContainers, 1000); }
+        
+        function quickStart(id) { document.getElementById('containerId').value = id; startContainer(); }
+        function quickStop(id) { document.getElementById('containerId').value = id; stopContainer(); }
+        
+        // MySQL函数
+        async function pullMySQLLogs() {
+            const id = document.getElementById('mysqlContainerId').value;
+            if (!id) { alert('请输入容器ID'); return; }
+            const r = await apiCall('/mysql-honeypot/pull-logs', 'POST', { container_id: id });
+            showResult('mysqlPullResult', r, r.error);
+            logOp('拉取MySQL日志: ' + id);
         }
-
-        // 显示镜像列表
-        function displayImageList(images) {
-            const imageListDiv = document.getElementById('imageList');
-
-            if (!images || images.length === 0) {
-                imageListDiv.innerHTML = '<p>没有找到镜像</p>';
-                return;
+        
+        async function getMySQLLogsBySourceIP() {
+            const ip = document.getElementById('mysqlSourceIP').value;
+            if (!ip) { alert('请输入IP'); return; }
+            const r = await apiCall(`/mysql-honeypot/logs/source-ip/${ip}`);
+            showResult('mysqlSearchResult', r.data || r, r.error);
+        }
+        
+        async function getMySQLLogsByDestIP() {
+            const ip = document.getElementById('mysqlDestIP').value;
+            if (!ip) { alert('请输入IP'); return; }
+            const r = await apiCall(`/mysql-honeypot/logs/destination-ip/${ip}`);
+            showResult('mysqlSearchResult', r.data || r, r.error);
+        }
+        
+        async function getMySQLLogsByUsername() {
+            const u = document.getElementById('mysqlUsername').value;
+            if (!u) { alert('请输入用户名'); return; }
+            const r = await apiCall(`/mysql-honeypot/logs/username/${u}`);
+            showResult('mysqlSearchResult', r.data || r, r.error);
+        }
+        
+        async function getMySQLLogsByDatabase() {
+            const db = document.getElementById('mysqlDatabase').value;
+            if (!db) { alert('请输入数据库名'); return; }
+            const r = await apiCall(`/mysql-honeypot/logs/database/${db}`);
+            showResult('mysqlSearchResult', r.data || r, r.error);
+        }
+        
+        async function getMySQLLogsByKeyword() {
+            const kw = document.getElementById('mysqlQueryKeyword').value;
+            const lim = document.getElementById('mysqlQueryLimit').value || 100;
+            if (!kw) { alert('请输入关键字'); return; }
+            const r = await apiCall(`/mysql-honeypot/logs/query?keyword=${encodeURIComponent(kw)}&limit=${lim}`);
+            showResult('mysqlSearchResult', r.data || r, r.error);
+        }
+        
+        async function searchMySQLLogs() {
+            const f = {
+                source_ip: document.getElementById('mysqlSearchSourceIP').value,
+                username: document.getElementById('mysqlSearchUsername').value,
+                start_time: document.getElementById('mysqlSearchStartTime').value,
+                end_time: document.getElementById('mysqlSearchEndTime').value,
+                limit: 200
+            };
+            const r = await apiCall('/mysql-honeypot/logs/search', 'POST', f);
+            showResult('mysqlSearchResult', r.data || r, r.error);
+            if (r.data) document.getElementById('mysqlLogCount').textContent = r.data.length;
+        }
+        
+        async function getAllMySQLLogs() {
+            const r = await apiCall('/mysql-honeypot/logs');
+            showResult('mysqlSearchResult', r.data || r, r.error);
+            if (r.data) document.getElementById('mysqlLogCount').textContent = r.data.length;
+        }
+        
+        async function getMySQLStatistics() {
+            const r = await apiCall('/mysql-honeypot/query-statistics');
+            showResult('mysqlSearchResult', r.data || r, r.error);
+        }
+        
+        // Cowrie函数
+        async function pullCowrieLogs() {
+            const id = document.getElementById('cowrieContainerId').value;
+            if (!id) { alert('请输入容器ID'); return; }
+            const r = await apiCall('/cowrie/pull-logs', 'POST', { container_id: id });
+            showResult('cowriePullResult', r, r.error);
+            logOp('拉取Cowrie日志: ' + id);
+        }
+        
+        async function getCowrieLogsBySourceIP() {
+            const ip = document.getElementById('cowrieSourceIP').value;
+            if (!ip) { alert('请输入IP'); return; }
+            const r = await apiCall(`/cowrie/logs/source-ip/${ip}`);
+            showResult('cowrieStatsResult', r.data || r, r.error);
+        }
+        
+        async function getCowrieLogsByUsername() {
+            const u = document.getElementById('cowrieUsername').value;
+            if (!u) { alert('请输入用户名'); return; }
+            const r = await apiCall(`/cowrie/logs/username/${u}`);
+            showResult('cowrieStatsResult', r.data || r, r.error);
+        }
+        
+        async function getCowrieLogsByCommand() {
+            const c = document.getElementById('cowrieCommand').value;
+            if (!c) { alert('请输入命令'); return; }
+            const r = await apiCall(`/cowrie/logs/command/${encodeURIComponent(c)}`);
+            showResult('cowrieStatsResult', r.data || r, r.error);
+        }
+        
+        async function getCowrieStatistics() {
+            const r = await apiCall('/cowrie/statistics');
+            showResult('cowrieStatsResult', r.data || r, r.error);
+            if (r.data && r.data.total) document.getElementById('cowrieLogCount').textContent = r.data.total;
+        }
+        
+        async function getCowrieTopAttackers() {
+            const r = await apiCall('/cowrie/top-attackers');
+            showResult('cowrieStatsResult', r.data || r, r.error);
+        }
+        
+        async function getCowrieTopCommands() {
+            const r = await apiCall('/cowrie/top-commands');
+            showResult('cowrieStatsResult', r.data || r, r.error);
+        }
+        
+        async function getCowrieTopUsernames() {
+            const r = await apiCall('/cowrie/top-usernames');
+            showResult('cowrieStatsResult', r.data || r, r.error);
+        }
+        
+        async function getCowrieTopPasswords() {
+            const r = await apiCall('/cowrie/top-passwords');
+            showResult('cowrieStatsResult', r.data || r, r.error);
+        }
+        
+        // Heralding函数
+        async function pullHeraldingLogs() {
+            const id = document.getElementById('heraldingContainerId').value;
+            if (!id) { alert('请输入容器ID'); return; }
+            const r = await apiCall('/heralding/pull-logs', 'POST', { container_id: id });
+            showResult('heraldingPullResult', r, r.error);
+            logOp('拉取Heralding日志: ' + id);
+        }
+        
+        async function getHeraldingLogsBySourceIP() {
+            const ip = document.getElementById('heraldingSourceIP').value;
+            if (!ip) { alert('请输入IP'); return; }
+            const r = await apiCall(`/heralding/logs/ip/${ip}`);
+            showResult('heraldingStatsResult', r.data || r, r.error);
+        }
+        
+        async function getHeraldingLogsByProtocol() {
+            const p = document.getElementById('heraldingProtocol').value;
+            if (!p) { alert('请选择协议'); return; }
+            const r = await apiCall(`/heralding/logs/protocol/${p}`);
+            showResult('heraldingStatsResult', r.data || r, r.error);
+        }
+        
+        async function getHeraldingStatistics() {
+            const r = await apiCall('/heralding/statistics');
+            showResult('heraldingStatsResult', r.data || r, r.error);
+        }
+        
+        // 系统函数
+        async function getHealthStatus() {
+            const r = await apiCall('/health');
+            const el = document.getElementById('healthStatus');
+            if (r.error) {
+                el.className = 'status-indicator error';
+                document.getElementById('healthText').textContent = '异常';
+            } else {
+                el.className = 'status-indicator healthy';
+                document.getElementById('healthText').textContent = '正常';
             }
-
-            let html = '<div class="image-grid">';
-            images.forEach(image => {
-                const repoTags = image.RepoTags || ['<none>:<none>'];
-                const size = (image.Size / (1024 * 1024)).toFixed(2);
-                const created = new Date(image.Created * 1000).toLocaleString();
-
-                html += `
-                    <div class="container-item">
-                        <h4>${repoTags[0]}</h4>
-                        <p><strong>ID:</strong> ${image.Id.substring(7, 19)}...</p>
-                        <p><strong>大小:</strong> ${size} MB</p>
-                        <p><strong>创建时间:</strong> ${created}</p>
-                        <div class="button-group">
-                            <button onclick="selectImageForContainer('${repoTags[0]}')" class="success">选择此镜像</button>
-                            <button onclick="deleteImageById('${image.Id}')" class="danger">删除</button>
-                        </div>
-                    </div>
+            showResult('systemStatus', r, r.error);
+        }
+        
+        async function getReadinessStatus() { const r = await apiCall('/ready'); showResult('systemStatus', r, r.error); }
+        async function getLivenessStatus() { const r = await apiCall('/live'); showResult('systemStatus', r, r.error); }
+        
+        async function getSystemDashboard() {
+            const r = await apiCall('/logs/statistics');
+            if (r.data) {
+                const s = r.data;
+                document.getElementById('dashboardStats').innerHTML = `
+                    <div class="stat-card"><div class="label">MySQL日志</div><div class="number">${s.mysql_logs || 0}</div></div>
+                    <div class="stat-card"><div class="label">Cowrie日志</div><div class="number">${s.cowrie_logs || 0}</div></div>
+                    <div class="stat-card"><div class="label">Heralding日志</div><div class="number">${s.heralding_logs || 0}</div></div>
+                    <div class="stat-card"><div class="label">活跃容器</div><div class="number">${s.active_containers || 0}</div></div>
                 `;
-            });
-            html += '</div>';
-
-            imageListDiv.innerHTML = html;
-        }
-
-        // 选择镜像用于创建容器
-        function selectImageForContainer(imageName) {
-            document.getElementById('imageName').value = imageName;
-            alert(`已选择镜像: ${imageName}`);
-        }
-
-        // 根据ID删除镜像
-        async function deleteImageById(imageId) {
-            if (!confirm(`确定要删除镜像 ${imageId.substring(7, 19)}... 吗？`)) {
-                return;
-            }
-
-            await apiCall(`/docker/images/${imageId}`, 'DELETE');
-
-            // 自动刷新镜像列表
-            setTimeout(() => getDockerImages(), 2000);
-        }
-
-        // 修改getDockerImages函数以显示结果
-        async function getDockerImagesAndDisplay() {
-            const result = await apiCall('/docker/images');
-            if (result && result.data) {
-                displayImageList(result.data);
             }
         }
-
-        // 重写getDockerImages函数
-        async function getDockerImages() {
-            await getDockerImagesAndDisplay();
+        
+        async function exportLogs() {
+            const t = document.getElementById('exportType').value;
+            const f = document.getElementById('exportFormat').value;
+            const r = await apiCall('/logs/export', 'POST', { type: t, format: f });
+            showResult('exportResult', r, r.error);
         }
-
-        // 页面加载时自动获取容器列表和镜像列表
-        window.onload = function() {
+        
+        async function getLogStatistics() {
+            const r = await apiCall('/logs/statistics');
+            showResult('perfStats', r.data || r, r.error);
+        }
+        
+        async function cleanLogs() {
+            const id = document.getElementById('cleanContainerId').value;
+            const t = document.getElementById('cleanType').value;
+            if (!id) { alert('请输入容器ID'); return; }
+            const url = t === 'mysql' ? `/mysql-honeypot/logs/container/${id}` : t === 'cowrie' ? `/cowrie/logs/container/${id}` : `/heralding/logs/container/${id}`;
+            const r = await apiCall(url, 'DELETE');
+            showResult('cleanResult', r, r.error);
+        }
+        
+        function clearOperationLog() { operationLogs.length = 0; }
+        
+        function downloadOperationLog() {
+            const blob = new Blob([operationLogs.join('\n')], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `log-${Date.now()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function refreshStatus() {
+            getHealthStatus();
             getAllContainers();
-            getDockerImages();
-        };
+            getAllMySQLLogs();
+            getCowrieStatistics();
+        }
+        
+        window.addEventListener('load', () => {
+            refreshStatus();
+            setInterval(refreshStatus, 30000);
+        });
     </script>
 </body>
 </html>

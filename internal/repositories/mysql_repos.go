@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -996,6 +997,13 @@ func (r *MySQLMySQLHoneypotLogRepo) GetBySourceIP(sourceIP string) ([]MySQLHoney
 	return logs, result.Error
 }
 
+// GetByDestinationIP 根据目标IP获取MySQL蜜罐日志
+func (r *MySQLMySQLHoneypotLogRepo) GetByDestinationIP(destinationIP string) ([]MySQLHoneypotLog, error) {
+	var logs []MySQLHoneypotLog
+	result := r.DB.Where("destination_ip = ?", destinationIP).Order("event_time DESC").Find(&logs)
+	return logs, result.Error
+}
+
 // GetByUsername 根据用户名获取MySQL蜜罐日志
 func (r *MySQLMySQLHoneypotLogRepo) GetByUsername(username string) ([]MySQLHoneypotLog, error) {
 	var logs []MySQLHoneypotLog
@@ -1003,10 +1011,35 @@ func (r *MySQLMySQLHoneypotLogRepo) GetByUsername(username string) ([]MySQLHoney
 	return logs, result.Error
 }
 
+// GetByDatabaseName 根据数据库名获取MySQL蜜罐日志
+func (r *MySQLMySQLHoneypotLogRepo) GetByDatabaseName(databaseName string) ([]MySQLHoneypotLog, error) {
+	var logs []MySQLHoneypotLog
+	result := r.DB.Where("database_name = ?", databaseName).Order("event_time DESC").Find(&logs)
+	return logs, result.Error
+}
+
 // GetByTimeRange 根据时间范围获取MySQL蜜罐日志
 func (r *MySQLMySQLHoneypotLogRepo) GetByTimeRange(startTime, endTime time.Time) ([]MySQLHoneypotLog, error) {
 	var logs []MySQLHoneypotLog
 	result := r.DB.Where("event_time BETWEEN ? AND ?", startTime, endTime).Order("event_time DESC").Find(&logs)
+	return logs, result.Error
+}
+
+// GetByQueryKeyword 根据SQL关键字模糊查询日志
+func (r *MySQLMySQLHoneypotLogRepo) GetByQueryKeyword(keyword string, limit int) ([]MySQLHoneypotLog, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+	var logs []MySQLHoneypotLog
+	like := fmt.Sprintf("%%%s%%", keyword)
+	result := r.DB.Where("query LIKE ?", like).Order("event_time DESC").Limit(limit).Find(&logs)
+	return logs, result.Error
+}
+
+// GetByErrorCode 根据错误码筛选
+func (r *MySQLMySQLHoneypotLogRepo) GetByErrorCode(errorCode string) ([]MySQLHoneypotLog, error) {
+	var logs []MySQLHoneypotLog
+	result := r.DB.Where("error_code = ?", errorCode).Order("event_time DESC").Find(&logs)
 	return logs, result.Error
 }
 
@@ -1046,4 +1079,44 @@ func (r *MySQLMySQLHoneypotLogRepo) GetQueryStatistics(limit int) ([]MySQLHoneyp
 		Limit(limit).
 		Find(&stats)
 	return stats, result.Error
+}
+
+// Search 根据过滤条件综合检索日志
+func (r *MySQLMySQLHoneypotLogRepo) Search(filter MySQLHoneypotSearchFilter) ([]MySQLHoneypotLog, error) {
+	query := r.DB.Model(&MySQLHoneypotLog{})
+	if filter.ContainerID != "" {
+		query = query.Where("container_id = ?", filter.ContainerID)
+	}
+	if filter.SourceIP != "" {
+		query = query.Where("source_ip = ?", filter.SourceIP)
+	}
+	if filter.DestinationIP != "" {
+		query = query.Where("destination_ip = ?", filter.DestinationIP)
+	}
+	if filter.Username != "" {
+		query = query.Where("username = ?", filter.Username)
+	}
+	if filter.DatabaseName != "" {
+		query = query.Where("database_name = ?", filter.DatabaseName)
+	}
+	if filter.QueryKeyword != "" {
+		query = query.Where("query LIKE ?", fmt.Sprintf("%%%s%%", filter.QueryKeyword))
+	}
+	if filter.ErrorCode != "" {
+		query = query.Where("error_code = ?", filter.ErrorCode)
+	}
+	if filter.StartTime != nil && filter.EndTime != nil {
+		query = query.Where("event_time BETWEEN ? AND ?", filter.StartTime, filter.EndTime)
+	} else if filter.StartTime != nil {
+		query = query.Where("event_time >= ?", filter.StartTime)
+	} else if filter.EndTime != nil {
+		query = query.Where("event_time <= ?", filter.EndTime)
+	}
+	limit := filter.Limit
+	if limit <= 0 || limit > 1000 {
+		limit = 200
+	}
+	var logs []MySQLHoneypotLog
+	result := query.Order("event_time DESC").Limit(limit).Find(&logs)
+	return logs, result.Error
 }

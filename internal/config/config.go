@@ -15,6 +15,7 @@ import (
 var (
 	DockerCli *client.Client
 	MySQLDB   *gorm.DB
+	SyncToken = getEnv("SYNC_TOKEN", "sync-dev-token")
 )
 
 // Config 应用配置
@@ -123,6 +124,7 @@ func InitTables() error {
 		&repositories.ScanResult{},
 		&repositories.DetectionResult{},
 		&repositories.ThreatIntelligence{},
+		&repositories.SyncError{},
 	)
 
 	if err != nil {

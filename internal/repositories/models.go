@@ -33,6 +33,8 @@ type HoneypotInstance struct {
 	CreateTime    time.Time `json:"create_time" gorm:"not null;comment:创建时间"`
 	UpdateTime    time.Time `json:"update_time" gorm:"comment:更新时间"`
 	Description   string    `json:"description" gorm:"type:text;comment:描述"`
+	SourceHost    string    `json:"source_host" gorm:"size:64;index:idx_instance_source_remote,priority:1;comment:来源主机"`
+	RemoteID      *uint     `json:"remote_id" gorm:"index:idx_instance_source_remote,priority:2;comment:远端记录ID"`
 }
 
 // SecurityRule 安全规则模型
@@ -52,6 +54,8 @@ type HoneypotLog struct {
 	LogType    string           `json:"log_type" gorm:"size:20;not null;comment:日志类型"`
 	Content    string           `json:"content" gorm:"type:text;not null;comment:日志内容"`
 	LogTime    time.Time        `json:"log_time" gorm:"not null;comment:记录时间"`
+	SourceHost string           `json:"source_host" gorm:"size:64;index:idx_log_source_remote,priority:1;comment:来源主机"`
+	RemoteID   *uint            `json:"remote_id" gorm:"index:idx_log_source_remote,priority:2;comment:远端记录ID"`
 }
 
 // RuleLog 规则日志模型
@@ -79,6 +83,20 @@ func (SecurityRule) TableName() string {
 
 func (HoneypotLog) TableName() string {
 	return "honeypot_log"
+}
+
+// SyncError 同步失败记录
+type SyncError struct {
+	ID           uint      `json:"id" gorm:"primaryKey"`
+	SourceHost   string    `json:"source_host" gorm:"size:64;not null;index:idx_sync_source"`
+	TargetTable  string    `json:"table_name" gorm:"column:table_name;size:64;not null;index:idx_sync_table"`
+	Payload      string    `json:"payload" gorm:"type:text;not null;comment:原始数据"`
+	ErrorMessage string    `json:"error_message" gorm:"type:text;not null;comment:错误信息"`
+	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
+}
+
+func (SyncError) TableName() string {
+	return "sync_errors"
 }
 
 func (RuleLog) TableName() string {
@@ -314,6 +332,20 @@ type MySQLHoneypotStatistics struct {
 	Attempts  int       `json:"attempts"`
 	UniqueIPs int       `json:"unique_ips"`
 	LastSeen  time.Time `json:"last_seen"`
+}
+
+// MySQLHoneypotSearchFilter 用于复杂检索
+type MySQLHoneypotSearchFilter struct {
+	ContainerID   string
+	SourceIP      string
+	DestinationIP string
+	Username      string
+	DatabaseName  string
+	QueryKeyword  string
+	ErrorCode     string
+	StartTime     *time.Time
+	EndTime       *time.Time
+	Limit         int
 }
 
 func (MySQLHoneypotLog) TableName() string {

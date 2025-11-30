@@ -244,6 +244,35 @@ CREATE TABLE IF NOT EXISTS cowrie_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Cowrie蜜罐日志';
 
 -- =====================================================
+-- MySQL 蜜罐日志表
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS mysql_honeypot_log (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    event_id VARCHAR(64) COMMENT '事件唯一ID',
+    event_time DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '事件时间',
+    container_id VARCHAR(100) COMMENT '容器ID',
+    container_name VARCHAR(100) COMMENT '容器名称',
+    source_ip VARCHAR(45) COMMENT '攻击源IP',
+    source_port INT UNSIGNED COMMENT '攻击源端口',
+    destination_ip VARCHAR(45) COMMENT '目标IP',
+    destination_port INT UNSIGNED COMMENT '目标端口',
+    username VARCHAR(255) COMMENT '登录用户名',
+    password VARCHAR(255) COMMENT '登录密码',
+    database_name VARCHAR(255) COMMENT '访问的数据库',
+    query TEXT COMMENT '执行的SQL语句',
+    error_code VARCHAR(50) COMMENT '错误码',
+    raw_log TEXT COMMENT '原始日志',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '记录创建时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_mysql_honeypot_event (event_id),
+    INDEX idx_mysql_honeypot_event_time (event_time),
+    INDEX idx_mysql_honeypot_container (container_id),
+    INDEX idx_mysql_honeypot_source_ip (source_ip),
+    INDEX idx_mysql_honeypot_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='MySQL蜜罐日志';
+
+-- =====================================================
 -- 视图（创建或替换）
 -- =====================================================
 

@@ -117,23 +117,52 @@ docker-compose logs -f
 
 系统启动后，可以通过以下端点访问：
 
-- **主服务**: http://localhost:9090
-- **健康检查**: http://localhost:9090/health
-- **API文档**: http://localhost:9090/swagger/index.html (计划中)
+- **主服务**: http://localhost:8848
+- **健康检查**: http://localhost:8848/health
+- **调试工具**: http://localhost:8848/debug-container.html
+- **API文档**: http://localhost:8848/swagger/index.html (计划中)
 
 ### 主要API端点
 
+#### 容器管理
 | 端点 | 方法 | 描述 |
 |------|------|------|
 | `/api/temp-containers` | GET | 获取容器列表 |
 | `/api/temp-containers` | POST | 创建新容器 |
+| `/api/temp-containers/{id}` | GET | 获取容器详情 |
+| `/api/temp-containers/{id}` | DELETE | 删除容器 |
+| `/api/container-logs/{id}` | GET | 获取容器日志 |
+
+#### 病毒检测
+| 端点 | 方法 | 描述 |
+|------|------|------|
 | `/api/malware/scan` | POST | 病毒扫描 |
+| `/api/malware/status` | GET | 扫描状态查询 |
+
+#### 日志管理
+| 端点 | 方法 | 描述 |
+|------|------|------|
+| `/api/v1/cowrie/pull-logs` | POST | 拉取 Cowrie 蜜罐日志 |
+| `/api/v1/heralding/pull-logs` | POST | 拉取 Heralding 认证日志 |
+| `/api/v1/mysql-honeypot/pull-logs` | POST | 拉取 MySQL 蜜罐日志 |
+| `/api/logs/export` | GET | 日志导出 |
+| `/api/logs/search` | POST | 日志搜索 |
+
+#### 统计分析
+| 端点 | 方法 | 描述 |
+|------|------|------|
 | `/api/honeytokens/statistics` | GET | 蜜签统计 |
 | `/api/sessions/statistics` | GET | 会话统计 |
-| `/api/logs/export` | GET | 日志导出 |
-| `/api/v1/cowrie/pull-logs` | POST | 拉取 Cowrie 蜜罐日志 |
-| `/api/v1/heralding/pull-logs` | POST | 拉取 Heralding/Heralding 认证日志 |
-| `/api/v1/mysql-honeypot/pull-logs` | POST | 拉取 MySQL 蜜罐日志 |
+| `/api/threat/statistics` | GET | 威胁统计 |
+
+#### MySQL蜜罐专用
+| 端点 | 方法 | 描述 |
+|------|------|------|
+| `/api/v1/mysql-honeypot/logs` | GET | 获取所有MySQL日志 |
+| `/api/v1/mysql-honeypot/logs/by-destination-ip` | GET | 按目标IP查询 |
+| `/api/v1/mysql-honeypot/logs/by-database` | GET | 按数据库名查询 |
+| `/api/v1/mysql-honeypot/logs/by-error` | GET | 按错误代码查询 |
+| `/api/v1/mysql-honeypot/logs/search` | GET | 高级搜索 |
 
 ## 📁 项目结构
 
@@ -235,17 +264,83 @@ docker-compose -f docker-compose.yml up -d
 
 详细部署指南请查看 [功能完善开发流程指南](docs/功能完善开发流程指南.md)
 
+## 🛠️ 调试工具
+
+### Web调试界面
+系统提供了功能完整的Web调试工具，可通过以下地址访问：
+
+```
+http://localhost:8848/debug-container.html
+```
+
+**功能特性:**
+- 🐳 **Docker容器管理** - 实时查看和管理所有容器
+- 📊 **MySQL蜜罐监控** - 查看数据库连接日志和错误记录
+- 🔐 **Cowrie SSH蜜罐** - 实时追踪SSH连接和命令执行
+- 📝 **Heralding认证日志** - 监控多协议认证尝试
+- 📈 **统计分析** - 攻击趋势和事件统计
+- ⚙️ **系统设置** - 配置蜜罐参数和日志同步
+
+### 调试工具功能详解
+
+#### Docker面板
+- 查看所有运行中的容器
+- 实时监控容器资源使用情况
+- 查看容器日志和详细信息
+- 支持容器启停操作
+
+#### MySQL蜜罐
+- 查看所有登录尝试和连接
+- 按目标IP、数据库名、错误代码搜索
+- 关键词搜索（用户名、密码等）
+- 导出日志数据
+
+#### 日志导出
+- 支持多种格式导出（JSON、CSV、TXT）
+- 按时间范围和条件过滤
+- 批量处理和下载
+
+## 📊 系统监控与统计
+
+### 实时监控指标
+- **连接数**: 当前活跃连接数量
+- **认证失败率**: 异常登录尝试统计
+- **文件上传**: 检测到的恶意文件
+- **命令执行**: 蜜罐中执行的命令记录
+- **地理分布**: 攻击源IP地理位置分析
+
+详细部署指南请查看 [功能完善开发流程指南](docs/功能完善开发流程指南.md)
+
 ## 🔄 版本更新
 
-### v2.0 (当前版本)
+### v2.1 (当前版本) - 2025年11月
+**新功能:**
+- ✅ **后端端口优化**: 调整监听端口从9090改为8848，避免端口冲突
+- ✅ **MySQL蜜罐增强**: 
+  - 新增目标IP查询接口
+  - 新增数据库名查询接口
+  - 新增错误代码查询接口
+  - 新增关键词搜索接口
+  - 支持高级组合搜索
+- ✅ **前端调试工具**: 完整的Web调试界面（debug-container.html）
+  - Docker容器管理面板
+  - MySQL蜜罐日志查看和搜索
+  - Cowrie SSH蜜罐管理
+  - Heralding认证蜜罐管理
+  - 实时统计和分析
+  - 系统设置和命令执行
+- ✅ **容器运行时日志**: 支持实时查看容器执行日志
+- ✅ **日志同步功能**: 远程日志同步和本地分析
+
+### v2.0 (稳定版)
 - ✅ 完整的后端API系统
-- ✅ 多协议蜜罐支持
-- ✅ 病毒检测功能
+- ✅ 多协议蜜罐支持 (Cowrie, Heralding, MySQL)
+- ✅ 病毒检测功能 (基于ClamAV)
 - ✅ 日志记录和导出
-- ⚠️ 前端可视化界面开发中
+- ✅ MySQL蜜罐集成
+- ✅ Docker容器管理
 
 ### 路线图
-- **v2.1**: 完整前端可视化界面
 - **v2.2**: 高级攻击溯源功能
 - **v2.3**: 机器学习威胁检测
 - **v3.0**: 分布式集群支持

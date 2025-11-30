@@ -52,6 +52,8 @@ func SetupRouter() *gin.Engine {
 	// 3. 定义 API 路由分组 `/api/v1`
 	api := r.Group("/api/v1")
 	{
+		api.POST("/sync/events", handlers.SyncEvents)
+
 		// ------------------------------ 健康检查接口 ------------------------------
 		api.GET("/health", handlers.HealthCheck)
 		api.GET("/ready", handlers.ReadinessCheck)
@@ -176,15 +178,20 @@ func SetupRouter() *gin.Engine {
 		// ------------------------------ MySQL蜜罐日志接口 ------------------------------
 		mysqlHoneypot := api.Group("/mysql-honeypot")
 		{
-			mysqlHoneypot.POST("/pull-logs", handlers.PullMySQLHoneypotLogs)                                   // 拉取日志
-			mysqlHoneypot.GET("/logs", handlers.GetAllMySQLHoneypotLogs)                                       // 获取所有日志
-			mysqlHoneypot.GET("/logs/:id", handlers.GetMySQLHoneypotLogByID)                                   // 根据ID获取日志
-			mysqlHoneypot.GET("/logs/container/:container_id", handlers.GetMySQLHoneypotLogsByContainer)       // 根据容器获取日志
-			mysqlHoneypot.GET("/logs/source-ip/:source_ip", handlers.GetMySQLHoneypotLogsBySourceIP)           // 根据源IP获取日志
-			mysqlHoneypot.GET("/logs/username/:username", handlers.GetMySQLHoneypotLogsByUsername)             // 根据用户名获取日志
-			mysqlHoneypot.GET("/logs/time-range", handlers.GetMySQLHoneypotLogsByTimeRange)                    // 根据时间范围获取日志
-			mysqlHoneypot.DELETE("/logs/container/:container_id", handlers.DeleteMySQLHoneypotLogsByContainer) // 删除容器日志
-			mysqlHoneypot.GET("/query-statistics", handlers.GetMySQLHoneypotQueryStatistics)                   // SQL查询统计
+			mysqlHoneypot.POST("/pull-logs", handlers.PullMySQLHoneypotLogs)                                        // 拉取日志
+			mysqlHoneypot.GET("/logs", handlers.GetAllMySQLHoneypotLogs)                                            // 获取所有日志
+			mysqlHoneypot.GET("/logs/:id", handlers.GetMySQLHoneypotLogByID)                                        // 根据ID获取日志
+			mysqlHoneypot.GET("/logs/container/:container_id", handlers.GetMySQLHoneypotLogsByContainer)            // 根据容器获取日志
+			mysqlHoneypot.GET("/logs/source-ip/:source_ip", handlers.GetMySQLHoneypotLogsBySourceIP)                // 根据源IP获取日志
+			mysqlHoneypot.GET("/logs/destination-ip/:destination_ip", handlers.GetMySQLHoneypotLogsByDestinationIP) // 根据目标IP获取日志
+			mysqlHoneypot.GET("/logs/username/:username", handlers.GetMySQLHoneypotLogsByUsername)                  // 根据用户名获取日志
+			mysqlHoneypot.GET("/logs/database/:database_name", handlers.GetMySQLHoneypotLogsByDatabaseName)         // 根据数据库名获取日志
+			mysqlHoneypot.GET("/logs/error-code/:error_code", handlers.GetMySQLHoneypotLogsByErrorCode)             // 根据错误码获取日志
+			mysqlHoneypot.GET("/logs/query", handlers.GetMySQLHoneypotLogsByQueryKeyword)                           // 根据SQL关键字搜索
+			mysqlHoneypot.POST("/logs/search", handlers.SearchMySQLHoneypotLogs)                                    // 综合查询日志
+			mysqlHoneypot.GET("/logs/time-range", handlers.GetMySQLHoneypotLogsByTimeRange)                         // 根据时间范围获取日志
+			mysqlHoneypot.DELETE("/logs/container/:container_id", handlers.DeleteMySQLHoneypotLogsByContainer)      // 删除容器日志
+			mysqlHoneypot.GET("/query-statistics", handlers.GetMySQLHoneypotQueryStatistics)                        // SQL查询统计
 		}
 
 		// ------------------------------ 容器实例管理接口 ------------------------------

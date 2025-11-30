@@ -176,8 +176,13 @@ type MySQLHoneypotLogRepository interface {
 	GetByContainerID(containerID string) ([]MySQLHoneypotLog, error)
 	GetLatestByContainerID(containerID string) (*MySQLHoneypotLog, error)
 	GetBySourceIP(sourceIP string) ([]MySQLHoneypotLog, error)
+	GetByDestinationIP(destinationIP string) ([]MySQLHoneypotLog, error)
 	GetByUsername(username string) ([]MySQLHoneypotLog, error)
+	GetByDatabaseName(databaseName string) ([]MySQLHoneypotLog, error)
 	GetByTimeRange(startTime, endTime time.Time) ([]MySQLHoneypotLog, error)
+	GetByQueryKeyword(keyword string, limit int) ([]MySQLHoneypotLog, error)
+	GetByErrorCode(errorCode string) ([]MySQLHoneypotLog, error)
+	Search(filter MySQLHoneypotSearchFilter) ([]MySQLHoneypotLog, error)
 	Create(log *MySQLHoneypotLog) error
 	CreateBatch(logs []MySQLHoneypotLog) error
 	Delete(id uint) error

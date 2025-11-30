@@ -199,12 +199,12 @@ deploy: build-linux docker
 # 快速部署 (开发环境)
 deploy-dev: docker-run
 	@echo "开发环境部署完成"
-	@echo "应用程序访问地址: http://localhost:9090"
+	@echo "应用程序访问地址: http://localhost:8848"
 
 # 健康检查
 health-check:
 	@echo "正在执行健康检查..."
-	@curl -f http://localhost:9090/health || echo "服务不可用"
+	@curl -f http://localhost:8848/health || echo "服务不可用"
 
 # 查看服务状态
 status:
@@ -216,7 +216,7 @@ status:
 	@docker ps | grep andorralee || echo "未找到Docker容器"
 	@echo ""
 	@echo "端口占用:"
-	@netstat -tlnp | grep :9090 || echo "9090端口未被占用"
+	@netstat -tlnp | grep :8848 || echo "8848端口未被占用"
 
 # 日志查看
 logs:

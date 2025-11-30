@@ -65,8 +65,8 @@ COPY --from=builder /app/static /app/static
 RUN mkdir -p /app/logs /app/data && \
     chown -R appuser:appgroup /app
 
-# 暴露应用端口（应用实际监听 9090）
-EXPOSE 9090
+# 暴露应用端口（应用实际监听 8848）
+EXPOSE 8848
 
 # 设置环境变量 - 针对银河麒麟系统优化
 ENV MYSQL_HOST=mysql \
@@ -79,7 +79,7 @@ ENV MYSQL_HOST=mysql \
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:9090/health || exit 1
+    CMD curl -f http://localhost:8848/health || exit 1
 
 # 切换到非root用户
 USER appuser
