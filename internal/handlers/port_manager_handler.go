@@ -3,6 +3,7 @@ package handlers
 import (
 	"andorralee/internal/services"
 	"andorralee/pkg/utils"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -146,10 +147,10 @@ func ReleasePortsByContainer(c *gin.Context) {
 	}
 
 	pm := services.GetPortManager()
-	
+
 	// 获取容器的端口列表
 	ports := pm.GetPortsByContainer(containerID)
-	
+
 	err := pm.ReleasePortsByContainer(containerID)
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "释放容器端口失败: "+err.Error())
@@ -157,9 +158,9 @@ func ReleasePortsByContainer(c *gin.Context) {
 	}
 
 	utils.ResponseSuccess(c, gin.H{
-		"container_id":    containerID,
-		"released_ports":  ports,
-		"message":         "容器端口释放成功",
+		"container_id":   containerID,
+		"released_ports": ports,
+		"message":        "容器端口释放成功",
 	})
 }
 
@@ -256,7 +257,7 @@ func GetAvailablePorts(c *gin.Context) {
 	}
 
 	pm := services.GetPortManager()
-	
+
 	// 验证端口范围
 	if err := pm.ValidatePortRange(req.Start, req.End); err != nil {
 		utils.ResponseError(c, http.StatusBadRequest, "端口范围无效: "+err.Error())
@@ -341,16 +342,24 @@ func AutoAllocatePortMapping(c *gin.Context) {
 	}
 
 	pm := services.GetPortManager()
-	result, err := pm.AutoAllocatePortMapping(req.ContainerID, req.PortMappings)
+	normalizedMappings, normalized := normalizeRequestPortMappings(c, "", req.PortMappings)
+	if normalized {
+		log.Printf("检测到 host-first 端口映射输入，已为容器 %s 进行格式转换", req.ContainerID)
+	}
+	if len(normalizedMappings) == 0 {
+		utils.ResponseError(c, http.StatusBadRequest, "端口映射格式无效，缺少容器端口")
+		return
+	}
+	result, err := pm.AutoAllocatePortMapping(req.ContainerID, normalizedMappings)
 	if err != nil {
 		utils.ResponseError(c, http.StatusInternalServerError, "自动分配端口映射失败: "+err.Error())
 		return
 	}
 
 	utils.ResponseSuccess(c, gin.H{
-		"container_id":   req.ContainerID,
-		"port_mappings":  result,
-		"message":        "端口映射分配成功",
+		"container_id":  req.ContainerID,
+		"port_mappings": result,
+		"message":       "端口映射分配成功",
 	})
 }
 

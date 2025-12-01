@@ -324,9 +324,12 @@ func (r *MySQLDockerImageRepo) GetByID(id uint) (*DockerImage, error) {
 // GetByImageID 根据镜像ID获取Docker镜像
 func (r *MySQLDockerImageRepo) GetByImageID(imageID string) (*DockerImage, error) {
 	var image DockerImage
-	result := r.DB.Where("image_id = ?", imageID).First(&image)
+	result := r.DB.Where("image_id = ?", imageID).Limit(1).Find(&image)
 	if result.Error != nil {
 		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, nil
 	}
 	return &image, nil
 }

@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -101,9 +102,34 @@ func CreateMemoryContainerInstance(c *gin.Context) {
 	var finalPortMappings map[string]string
 	var mainPort int
 
+	// 如果未指定端口映射且镜像是 heralding，使用 heralding 的常见容器端口并标记为 auto
+	if len(req.PortMappings) == 0 && strings.Contains(strings.ToLower(req.ImageName), "heralding") {
+		req.PortMappings = map[string]string{
+			"22":   "auto",
+			"23":   "auto",
+			"80":   "auto",
+			"110":  "auto",
+			"143":  "auto",
+			"443":  "auto",
+			"3306": "auto",
+			"3389": "auto",
+			"5900": "auto",
+			"995":  "auto",
+			"993":  "auto",
+		}
+	}
+
 	if len(req.PortMappings) > 0 {
+		normalizedMappings, normalized := normalizeRequestPortMappings(c, req.Description, req.PortMappings)
+		if normalized {
+			log.Printf("检测到 host-first 端口映射输入，已为 %s 进行格式转换", req.Name)
+		}
+		if len(normalizedMappings) == 0 {
+			utils.ResponseError(c, http.StatusBadRequest, "端口映射格式无效，缺少容器端口")
+			return
+		}
 		// 使用端口管理服务自动分配端口映射
-		allocatedMappings, err := pm.AutoAllocatePortMapping(containerName, req.PortMappings)
+		allocatedMappings, err := pm.AutoAllocatePortMapping(containerName, normalizedMappings)
 		if err != nil {
 			utils.ResponseError(c, http.StatusInternalServerError, "端口分配失败: "+err.Error())
 			return
@@ -281,26 +307,27 @@ func CreateMemoryContainerInstance(c *gin.Context) {
 	}
 
 	result := map[string]interface{}{
-		"id":               instance.ID,
-		"name":             instance.Name,
-		"honeypot_name":    instance.HoneypotName,
-		"container_name":   instance.ContainerName,
-		"container_id":     instance.ContainerID,
-		"ip":               instance.IP,
-		"honeypot_ip":      instance.HoneypotIP,
-		"port":             instance.Port,
-		"protocol":         instance.Protocol,
-		"interface_type":   instance.InterfaceType,
-		"status":           instance.Status,
-		"image_name":       instance.ImageName,
-		"image_id":         instance.ImageID,
-		"port_mappings":    req.PortMappings,
-		"ports_pretty":     portsPretty,
-		"environment":      req.Environment,
-		"create_time":      instance.CreateTime,
-		"description":      instance.Description,
-		"docker_available": dockerAvailable,
-		"storage_type":     "memory",
+		"id":                      instance.ID,
+		"name":                    instance.Name,
+		"honeypot_name":           instance.HoneypotName,
+		"container_name":          instance.ContainerName,
+		"container_id":            instance.ContainerID,
+		"ip":                      instance.IP,
+		"honeypot_ip":             instance.HoneypotIP,
+		"port":                    instance.Port,
+		"protocol":                instance.Protocol,
+		"interface_type":          instance.InterfaceType,
+		"status":                  instance.Status,
+		"image_name":              instance.ImageName,
+		"image_id":                instance.ImageID,
+		"port_mappings":           finalPortMappings,
+		"requested_port_mappings": req.PortMappings,
+		"ports_pretty":            portsPretty,
+		"environment":             req.Environment,
+		"create_time":             instance.CreateTime,
+		"description":             instance.Description,
+		"docker_available":        dockerAvailable,
+		"storage_type":            "memory",
 	}
 
 	utils.ResponseSuccess(c, result)

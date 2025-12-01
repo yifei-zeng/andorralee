@@ -44,8 +44,6 @@ func NewCowrieService() (*CowrieService, error) {
 	if strings.EqualFold(os.Getenv("COWRIE_AUTO_ENABLED"), "true") {
 		go service.startAutoLogPull()
 		log.Println("✅ 已启用Cowrie自动任务 (COWRIE_AUTO_ENABLED=true)")
-	} else {
-		log.Println("ℹ️ Cowrie自动任务未启用 (设置 COWRIE_AUTO_ENABLED=true 可开启)")
 	}
 
 	return service, nil

@@ -37,7 +37,7 @@ func LoadConfig() *Config {
 	config.MySQL.Host = getEnv("MYSQL_HOST", "localhost")
 	config.MySQL.Port = getEnv("MYSQL_PORT", "3306")
 	config.MySQL.User = getEnv("MYSQL_USER", "root")
-	config.MySQL.Password = getEnv("MYSQL_PASSWORD", "123456")
+	config.MySQL.Password = getEnv("MYSQL_PASSWORD", "mac123456")
 	config.MySQL.Database = getEnv("MYSQL_DATABASE", "andorralee")
 
 	return config
