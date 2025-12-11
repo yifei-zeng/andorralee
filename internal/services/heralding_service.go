@@ -357,26 +357,33 @@ func (s *HeraldingService) readHeraldingLogsFromContainer(containerID string, lo
 		}
 
 		tr := tar.NewReader(reader)
-		_, err = tr.Next() // 读取第一个文件头
-		if err != nil {
-			reader.Close()
-			lastErr = err
-			continue
-		}
+		var content []byte
+		found := false
 
-		content, err := io.ReadAll(tr)
+		for {
+			header, err := tr.Next()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				lastErr = err
+				break
+			}
+
+			if header.Typeflag == tar.TypeReg {
+				content, err = io.ReadAll(tr)
+				if err != nil {
+					lastErr = err
+					break
+				}
+				found = true
+				break
+			}
+		}
 		reader.Close()
-		if err != nil {
-			return nil, fmt.Errorf("读取日志内容失败: %w", err)
-		}
 
-		csvData, err := s.extractLatestCSV(content)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		if len(csvData) > 0 {
-			return csvData, nil
+		if found && len(content) > 0 {
+			return content, nil
 		}
 	}
 
@@ -384,50 +391,6 @@ func (s *HeraldingService) readHeraldingLogsFromContainer(containerID string, lo
 		log.Printf("尝试读取Heralding日志失败（容器 %s）: %v", containerID, lastErr)
 	}
 	return []byte{}, nil
-}
-
-// extractLatestCSV 从tar内容中提取最新的CSV/LOG文件
-func (s *HeraldingService) extractLatestCSV(tarData []byte) ([]byte, error) {
-	reader := tar.NewReader(bytes.NewReader(tarData))
-	type fileEntry struct {
-		name    string
-		modTime time.Time
-		data    []byte
-	}
-
-	var selected *fileEntry
-	for {
-		header, err := reader.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		info := header.FileInfo()
-		if info == nil || !info.Mode().IsRegular() {
-			continue
-		}
-
-		name := strings.ToLower(info.Name())
-		if !(strings.HasSuffix(name, ".csv") || strings.HasSuffix(name, ".log")) {
-			continue
-		}
-
-		data, err := io.ReadAll(reader)
-		if err != nil {
-			return nil, err
-		}
-
-		if selected == nil || info.ModTime().After(selected.modTime) {
-			selected = &fileEntry{name: header.Name, modTime: info.ModTime(), data: data}
-		}
-	}
-
-	if selected == nil {
-		return []byte{}, nil
-	}
-	return selected.data, nil
 }
 
 func buildHeraldingHeader(headerRow []string) map[string]int {

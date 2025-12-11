@@ -185,6 +185,7 @@ async function renderContainers(container) {
                         <option value="mysql">MySQL</option>
                         <option value="ftp">FTP</option>
                         <option value="telnet">Telnet</option>
+                        <option value="heralding">Heralding (Auto)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -266,9 +267,111 @@ window.createContainer = async () => {
     const res = await apiCall('/temp-containers', 'POST', payload);
     if (res) {
         showToast('容器创建请求已发送', 'success');
+        // 显示端口映射弹窗（如果后端返回映射）
+        const created = res.data || res;
+        if (created && (created.port_mappings || created.port_mappings === "")) {
+            // 兼容后端不同返回结构
+            const pm = typeof created.port_mappings === 'string' ? (() => {
+                try { return JSON.parse(created.port_mappings); } catch(e) { return {}; }
+            })() : (created.port_mappings || {});
+            showPortMappingModal(pm, created);
+        }
         setTimeout(refreshContainerList, 1500);
     }
 };
+
+// 显示端口映射模态框
+function showPortMappingModal(portMappings, created) {
+    // 移除已有模态
+    const existing = document.getElementById('port-mapping-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'port-mapping-modal';
+    modal.style.position = 'fixed';
+    modal.style.left = '0';
+    modal.style.top = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.background = 'rgba(0,0,0,0.5)';
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.style.zIndex = 9999;
+
+    const box = document.createElement('div');
+    box.style.background = 'white';
+    box.style.padding = '18px';
+    box.style.borderRadius = '8px';
+    box.style.width = '520px';
+    box.style.maxHeight = '80%';
+    box.style.overflow = 'auto';
+
+    const title = document.createElement('h3');
+    title.textContent = '容器已创建 — 端口映射';
+    box.appendChild(title);
+
+    if (created && created.name) {
+        const nameLine = document.createElement('div');
+        nameLine.style.marginBottom = '8px';
+        nameLine.textContent = `名称: ${created.name}   容器ID: ${created.container_id || created.container_id || (created.container_id === 0 ? '0':'' )}`;
+        box.appendChild(nameLine);
+    }
+
+    const list = document.createElement('div');
+    list.style.margin = '8px 0';
+
+    const keys = Object.keys(portMappings || {});
+    if (keys.length === 0) {
+        const e = document.createElement('div');
+        e.textContent = '未返回端口映射信息。请检查后端响应或在容器详情中查看 `port_mappings` 字段。';
+        list.appendChild(e);
+    } else {
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        const thead = document.createElement('thead');
+        thead.innerHTML = '<tr><th style="text-align:left">容器端口</th><th style="text-align:left">宿主端口</th><th style="text-align:left">操作</th></tr>';
+        table.appendChild(thead);
+        const tbody = document.createElement('tbody');
+        keys.forEach(k => {
+            const host = portMappings[k];
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td style="padding:6px 4px">${k}</td><td style="padding:6px 4px">${host}</td>`;
+            const td = document.createElement('td');
+            td.style.padding = '6px 4px';
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-sm btn-outline';
+            btn.textContent = '复制(host:port)';
+            btn.onclick = () => {
+                const text = `localhost:${host}`;
+                navigator.clipboard && navigator.clipboard.writeText(text);
+                showToast(`已复制 ${text}`, 'success');
+            };
+            td.appendChild(btn);
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        list.appendChild(table);
+    }
+
+    box.appendChild(list);
+
+    const footer = document.createElement('div');
+    footer.style.display = 'flex';
+    footer.style.justifyContent = 'flex-end';
+    footer.style.gap = '8px';
+    const close = document.createElement('button');
+    close.className = 'btn btn-primary';
+    close.textContent = '关闭';
+    close.onclick = () => modal.remove();
+    footer.appendChild(close);
+    box.appendChild(footer);
+
+    modal.appendChild(box);
+    document.body.appendChild(modal);
+}
 
 window.syncContainerStatus = async () => {
     await apiCall('/temp-containers/sync', 'POST'); // Try temp sync
