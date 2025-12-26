@@ -194,6 +194,36 @@ func SetupRouter() *gin.Engine {
 			mysqlHoneypot.GET("/query-statistics", handlers.GetMySQLHoneypotQueryStatistics)                        // SQL查询统计
 		}
 
+		// ------------------------------ Dionaea 蜜罐日志接口 ------------------------------
+		dionaea := api.Group("/dionaea")
+		{
+			dionaea.POST("/pull-logs", handlers.PullDionaeaLogs)                                   // 拉取日志
+			dionaea.GET("/logs", handlers.GetAllDionaeaLogs)                                       // 获取全部
+			dionaea.GET("/logs/:id", handlers.GetDionaeaLogByID)                                   // 按ID
+			dionaea.GET("/logs/container/:container_id", handlers.GetDionaeaLogsByContainer)       // 按容器
+			dionaea.GET("/logs/source-ip/:source_ip", handlers.GetDionaeaLogsBySourceIP)           // 按源IP
+			dionaea.GET("/logs/protocol/:protocol", handlers.GetDionaeaLogsByProtocol)             // 按协议
+			dionaea.GET("/logs/time-range", handlers.GetDionaeaLogsByTimeRange)                    // 按时间
+			dionaea.DELETE("/logs/container/:container_id", handlers.DeleteDionaeaLogsByContainer) // 删除容器日志
+		}
+
+		// ------------------------------ 节点与转发接口 ------------------------------
+		nodes := api.Group("/nodes")
+		{
+			nodes.GET("", handlers.NodesListHandler)
+		}
+
+		proxy := api.Group("/proxy")
+		{
+			proxy.Any(":node/*path", handlers.ProxyToNodeHandler)
+		}
+
+		// ------------------------------ 节点日志上行同步 ------------------------------
+		syncGroup := api.Group("/sync")
+		{
+			syncGroup.POST("/logs", handlers.SyncLogs)
+		}
+
 		// ------------------------------ 容器实例管理接口 ------------------------------
 		containerInstances := api.Group("/container-instances")
 		{

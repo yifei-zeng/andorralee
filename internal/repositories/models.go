@@ -306,6 +306,30 @@ func (CowrieLog) TableName() string {
 	return "cowrie_log"
 }
 
+// DionaeaLog Dionaea蜜罐日志模型（含UDP攻击）
+type DionaeaLog struct {
+	ID              uint      `json:"id" gorm:"primaryKey"`
+	EventTime       time.Time `json:"event_time" gorm:"type:datetime(6);not null;comment:事件时间"`
+	ConnectionType  string    `json:"connection_type" gorm:"size:50;comment:连接类型(udp/tcp/other)"`
+	Protocol        string    `json:"protocol" gorm:"size:50;comment:协议，如 tftp/ftp/mqtt"`
+	SourceIP        string    `json:"source_ip" gorm:"size:45;index;comment:攻击源IP"`
+	SourcePort      uint16    `json:"source_port" gorm:"comment:攻击源端口"`
+	DestinationIP   string    `json:"destination_ip" gorm:"size:45;comment:目标IP"`
+	DestinationPort uint16    `json:"destination_port" gorm:"comment:目标端口"`
+	Sensor          string    `json:"sensor" gorm:"size:100;comment:采集器/主机标识"`
+	URL             string    `json:"url" gorm:"size:500;comment:访问URL或资源标识"`
+	PayloadType     string    `json:"payload_type" gorm:"size:100;comment:负载类型"`
+	Payload         string    `json:"payload" gorm:"type:text;comment:负载内容(可能为十六进制或JSON)"`
+	RawLog          string    `json:"raw_log" gorm:"type:text;comment:原始日志"`
+	ContainerID     string    `json:"container_id" gorm:"size:64;index;comment:关联容器ID"`
+	ContainerName   string    `json:"container_name" gorm:"size:100;comment:容器名称"`
+	CreatedAt       time.Time `json:"created_at" gorm:"not null;comment:记录创建时间"`
+}
+
+func (DionaeaLog) TableName() string {
+	return "dionaea_log"
+}
+
 // MySQLHoneypotLog MySQL蜜罐日志模型
 type MySQLHoneypotLog struct {
 	ID              uint      `json:"id" gorm:"primaryKey"`
@@ -313,12 +337,16 @@ type MySQLHoneypotLog struct {
 	EventTime       time.Time `json:"event_time" gorm:"type:datetime(6);not null;comment:事件时间"`
 	ContainerID     string    `json:"container_id" gorm:"size:64;index;comment:关联容器ID"`
 	ContainerName   string    `json:"container_name" gorm:"size:100;comment:容器名称"`
+	EventType       string    `json:"event_type" gorm:"size:50;index;comment:事件类型(new_connection/access_denied/close/signal/other)"`
+	Message         string    `json:"message" gorm:"type:text;comment:原始消息内容"`
 	SourceIP        string    `json:"source_ip" gorm:"size:45;index;comment:攻击源IP"`
 	SourcePort      uint      `json:"source_port" gorm:"comment:攻击源端口"`
 	DestinationIP   string    `json:"destination_ip" gorm:"size:45;comment:目标IP"`
 	DestinationPort uint      `json:"destination_port" gorm:"comment:目标端口"`
 	Username        string    `json:"username" gorm:"size:255;index;comment:登录用户名"`
 	Password        string    `json:"password" gorm:"size:255;comment:登录密码"`
+	PasswordUsed    string    `json:"password_used" gorm:"size:20;comment:是否使用密码(YES/NO/UNKNOWN)"`
+	AuthPlugin      string    `json:"auth_plugin" gorm:"size:100;comment:认证插件"`
 	DatabaseName    string    `json:"database_name" gorm:"size:255;comment:访问的数据库"`
 	Query           string    `json:"query" gorm:"type:text;comment:执行的SQL语句"`
 	ErrorCode       string    `json:"error_code" gorm:"size:50;comment:错误码"`

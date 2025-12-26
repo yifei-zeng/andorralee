@@ -3,19 +3,18 @@ package services
 import (
 	"andorralee/internal/config"
 	"andorralee/internal/repositories"
-	"archive/tar"
-	"bytes"
 	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
-	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/google/uuid"
 )
 
@@ -77,107 +76,52 @@ func (s *MySQLHoneypotService) PullMySQLHoneypotLogs(containerID string) error {
 	return nil
 }
 
-// readMySQLLogsFromContainer 读取容器中的日志文件
+// readMySQLLogsFromContainer 从容器的 docker logs 读取日志
 func (s *MySQLHoneypotService) readMySQLLogsFromContainer(containerID string) ([]string, error) {
 	if config.DockerCli == nil {
 		return nil, fmt.Errorf("Docker客户端未初始化")
 	}
 
-	var candidatePaths []string
-	if custom := strings.TrimSpace(os.Getenv("MYSQL_HONEYPOT_LOG_PATH")); custom != "" {
-		candidatePaths = append(candidatePaths, custom)
-	}
-	candidatePaths = append(candidatePaths,
-		"/var/log/mysql-honeypot.log",
-		"/var/log/mysql-honeypot/mysql-honeypot.log",
-		"/var/log/mysqlpot/mysqlpot.log",
-		"/opt/mysql-honeypot/logs/mysql-honeypot.log",
-		"/opt/mysqlpot/logs/mysqlpot.log",
-		"/data/logs/mysql-honeypot.log",
-		"/logs/mysql-honeypot.log",
+	log.Printf("[DEBUG] 开始从容器 %s 读取 docker logs", containerID)
+	logsReader, err := config.DockerCli.ContainerLogs(
+		context.Background(),
+		containerID,
+		container.LogsOptions{
+			ShowStdout: true,
+			ShowStderr: true,
+			Follow:     false,
+			Tail:       "2000", // 控制读取量，防止一次性取太多
+			Timestamps: false,
+		},
 	)
+	if err != nil {
+		return nil, fmt.Errorf("读取 docker logs 失败: %w", err)
+	}
+	defer logsReader.Close()
 
-	var lastErr error
-	for _, logPath := range candidatePaths {
-		reader, _, err := config.DockerCli.CopyFromContainer(context.Background(), containerID, logPath)
-		if err != nil {
-			lastErr = err
-			continue
-		}
+	log.Printf("[DEBUG] docker logs 读取成功，开始解析")
 
-		content, err := io.ReadAll(reader)
-		reader.Close()
-		if err != nil {
-			return nil, fmt.Errorf("读取日志内容失败: %w", err)
-		}
-
-		lines, err := s.extractMySQLLogLines(content)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		if len(lines) > 0 {
-			return lines, nil
-		}
+	// 直接读取全部内容，不使用 stdcopy（因为容器可能没有 TTY 复用）
+	content, err := io.ReadAll(logsReader)
+	if err != nil {
+		return nil, fmt.Errorf("读取日志内容失败: %w", err)
 	}
 
-	if lastErr != nil {
-		log.Printf("读取MySQL蜜罐日志失败（容器 %s）: %v", containerID, lastErr)
+	log.Printf("[DEBUG] 读取到 %d 字节日志内容", len(content))
+
+	lines := splitMySQLLogLines(string(content))
+	log.Printf("[DEBUG] 解析得到 %d 行日志", len(lines))
+
+	if len(lines) > 0 {
+		log.Printf("[DEBUG] 前 3 行示例: %v", lines[:min(3, len(lines))])
 	}
-	return []string{}, nil
+
+	return lines, nil
 }
 
-// extractMySQLLogLines 从tar内容中提取最新的日志文件并按行拆分
-func (s *MySQLHoneypotService) extractMySQLLogLines(tarData []byte) ([]string, error) {
-	reader := tar.NewReader(bytes.NewReader(tarData))
-	type fileEntry struct {
-		modTime time.Time
-		content []byte
-	}
-
-	var latest *fileEntry
-	for {
-		header, err := reader.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		info := header.FileInfo()
-		if info == nil || !info.Mode().IsRegular() {
-			continue
-		}
-
-		name := strings.ToLower(info.Name())
-		if !(strings.HasSuffix(name, ".log") || strings.HasSuffix(name, ".json") || strings.HasSuffix(name, ".jsonl") || strings.HasSuffix(name, ".txt")) {
-			continue
-		}
-		if strings.HasSuffix(name, ".gz") || strings.HasSuffix(name, ".xz") {
-			continue
-		}
-
-		data, err := io.ReadAll(reader)
-		if err != nil {
-			return nil, err
-		}
-
-		if latest == nil || info.ModTime().After(latest.modTime) {
-			latest = &fileEntry{modTime: info.ModTime(), content: data}
-		}
-	}
-
-	if latest == nil {
-		return []string{}, nil
-	}
-
-	text := strings.TrimSpace(string(latest.content))
-	if text == "" {
-		return []string{}, nil
-	}
-
-	rawLines := strings.Split(text, "\n")
+// splitMySQLLogLines 将 docker logs 文本拆分成非空行
+func splitMySQLLogLines(text string) []string {
+	rawLines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
 	lines := make([]string, 0, len(rawLines))
 	for _, line := range rawLines {
 		line = strings.TrimSpace(line)
@@ -186,7 +130,14 @@ func (s *MySQLHoneypotService) extractMySQLLogLines(tarData []byte) ([]string, e
 		}
 		lines = append(lines, line)
 	}
-	return lines, nil
+	return lines
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // parseMySQLHoneypotLines 将日志文本解析为结构化记录
@@ -210,11 +161,14 @@ func (s *MySQLHoneypotService) parseMySQLHoneypotLines(lines []string, container
 	for idx, line := range lines {
 		entry, err := s.decodeMySQLLogLine(line, defaults)
 		if err != nil {
-			log.Printf("解析MySQL蜜罐日志失败 (容器 %s, 行 %d): %v", containerID, idx+1, err)
+			log.Printf("解析MySQL蜜罐日志失败 (容器 %s, 行 %d): %v, 内容: %s", containerID, idx+1, err, line)
 			continue
 		}
 
+		log.Printf("[DEBUG] 解析成功 行%d: EventType=%s, SourceIP=%s, Username=%s", idx+1, entry.EventType, entry.SourceIP, entry.Username)
+
 		if !latest.IsZero() && (entry.EventTime.Before(latest) || entry.EventTime.Equal(latest)) {
+			log.Printf("[DEBUG] 跳过旧日志 (行 %d): %v <= %v", idx+1, entry.EventTime, latest)
 			continue
 		}
 
@@ -253,6 +207,10 @@ func (s *MySQLHoneypotService) decodeMySQLLogLine(line string, defaults mysqlLog
 		}
 	}
 
+	if entry, err := parseMySQLPlainLine(line); err == nil {
+		return applyMySQLDefaults(entry, defaults, line), nil
+	}
+
 	return nil, fmt.Errorf("无法解析日志行")
 }
 
@@ -270,6 +228,9 @@ func applyMySQLDefaults(entry *repositories.MySQLHoneypotLog, defaults mysqlLogD
 	if entry.EventTime.IsZero() {
 		entry.EventTime = time.Now()
 	}
+	if entry.EventType == "" {
+		entry.EventType = "other"
+	}
 	if entry.DestinationIP == "" {
 		entry.DestinationIP = defaults.destinationIP
 	}
@@ -280,6 +241,60 @@ func applyMySQLDefaults(entry *repositories.MySQLHoneypotLog, defaults mysqlLogD
 	entry.ContainerName = defaults.containerName
 	entry.RawLog = raw
 	return entry
+}
+
+var (
+	plainLinePrefix   = regexp.MustCompile(`^(?P<ts>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s+[^:]+:\s+(?P<body>.+)$`)
+	plainAccessDenied = regexp.MustCompile(`Access denied for user '([^']+)' from ([\d\.]+):(\d+) to ([\d\.]+):(\d+) \(using password: ([^;\)]+); authentication plugin: ([^\)]+)\)`)
+	plainNewConn      = regexp.MustCompile(`New connection from ([\d\.]+):(\d+) \[[^\]]*\] to ([\d\.]+):(\d+)`)
+	plainClosing      = regexp.MustCompile(`Closing connection for ([\d\.]+):(\d+)`)
+	plainSignal       = regexp.MustCompile(`Got signal (\d+), shutting down`)
+)
+
+// parseMySQLPlainLine 解析 docker logs 输出的明文格式
+func parseMySQLPlainLine(line string) (*repositories.MySQLHoneypotLog, error) {
+	matches := plainLinePrefix.FindStringSubmatch(line)
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("不符合前缀格式")
+	}
+
+	ts := matches[1]
+	body := matches[2]
+	eventTime, err := parseMySQLTimestamp(ts)
+	if err != nil {
+		eventTime = time.Now()
+	}
+
+	entry := &repositories.MySQLHoneypotLog{
+		EventTime: eventTime,
+		Message:   body,
+	}
+
+	switch {
+	case plainAccessDenied.MatchString(body):
+		s := plainAccessDenied.FindStringSubmatch(body)
+		entry.EventType = "access_denied"
+		entry.Username = strings.TrimSpace(s[1])
+		entry.SourceIP, entry.SourcePort = parseIPPort(s[2], s[3])
+		entry.DestinationIP, entry.DestinationPort = parseIPPort(s[4], s[5])
+		entry.PasswordUsed = strings.TrimSpace(s[6])
+		entry.AuthPlugin = strings.TrimSpace(s[7])
+	case plainNewConn.MatchString(body):
+		s := plainNewConn.FindStringSubmatch(body)
+		entry.EventType = "new_connection"
+		entry.SourceIP, entry.SourcePort = parseIPPort(s[1], s[2])
+		entry.DestinationIP, entry.DestinationPort = parseIPPort(s[3], s[4])
+	case plainClosing.MatchString(body):
+		s := plainClosing.FindStringSubmatch(body)
+		entry.EventType = "connection_close"
+		entry.SourceIP, entry.SourcePort = parseIPPort(s[1], s[2])
+	case plainSignal.MatchString(body):
+		entry.EventType = "signal"
+	default:
+		entry.EventType = "other"
+	}
+
+	return entry, nil
 }
 
 func parseMySQLJSONLine(line string) (*repositories.MySQLHoneypotLog, error) {
@@ -377,6 +392,12 @@ func parseMySQLTimestamp(value string) (time.Time, error) {
 		}
 	}
 	return time.Time{}, fmt.Errorf("无法解析时间: %s", value)
+}
+
+func parseIPPort(ipStr, portStr string) (string, uint) {
+	ip := strings.TrimSpace(ipStr)
+	port := parseUintValue(strings.TrimSpace(portStr))
+	return ip, port
 }
 
 func stringFromMap(data map[string]interface{}, keys ...string) string {

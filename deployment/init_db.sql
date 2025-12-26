@@ -253,12 +253,16 @@ CREATE TABLE IF NOT EXISTS mysql_honeypot_log (
     event_time DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '事件时间',
     container_id VARCHAR(100) COMMENT '容器ID',
     container_name VARCHAR(100) COMMENT '容器名称',
+    event_type VARCHAR(50) COMMENT '事件类型(new_connection/access_denied/close/signal/other)',
+    message TEXT COMMENT '原始消息内容',
     source_ip VARCHAR(45) COMMENT '攻击源IP',
     source_port INT UNSIGNED COMMENT '攻击源端口',
     destination_ip VARCHAR(45) COMMENT '目标IP',
     destination_port INT UNSIGNED COMMENT '目标端口',
     username VARCHAR(255) COMMENT '登录用户名',
     password VARCHAR(255) COMMENT '登录密码',
+    password_used VARCHAR(20) COMMENT '是否使用密码(YES/NO/UNKNOWN)',
+    auth_plugin VARCHAR(100) COMMENT '认证插件',
     database_name VARCHAR(255) COMMENT '访问的数据库',
     query TEXT COMMENT '执行的SQL语句',
     error_code VARCHAR(50) COMMENT '错误码',
@@ -269,7 +273,8 @@ CREATE TABLE IF NOT EXISTS mysql_honeypot_log (
     INDEX idx_mysql_honeypot_event_time (event_time),
     INDEX idx_mysql_honeypot_container (container_id),
     INDEX idx_mysql_honeypot_source_ip (source_ip),
-    INDEX idx_mysql_honeypot_username (username)
+    INDEX idx_mysql_honeypot_username (username),
+    INDEX idx_mysql_honeypot_event_type (event_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='MySQL蜜罐日志';
 
 -- =====================================================

@@ -1,0 +1,124 @@
+services:
+  # MySQL数据库服务
+  mysql:
+    image: mysql:8.0
+    platform: linux/amd64
+    container_name: andorralee-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: mac123456
+      MYSQL_DATABASE: andorralee
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    ports:
+      - "3306:3306"
+    networks:
+      - andorralee-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pmac123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Andorralee后端服务
+  andorralee-backend:
+    image: andorralee/backend:latest
+    platform: linux/amd64
+    container_name: andorralee-backend
+    restart: always
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=mac123456
+      - DB_NAME=andorralee
+      - GIN_MODE=release
+      - TZ=Asia/Shanghai
+    ports:
+      - "8848:8848"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - andorralee-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - andorralee-logs:/app/logs
+
+  # Cowrie SSH蜜罐 (shellguard-1)
+  shellguard-1:
+    image: andorralee/cowrie:v0.1
+    platform: linux/amd64
+    container_name: shellguard-1
+    restart: always
+    ports:
+      - "2222:2222"
+      - "2223:2223"
+    networks:
+      - andorralee-network
+    volumes:
+      - cowrie-logs:/cowrie/var/log/cowrie
+
+  # Heralding多协议蜜罐 (shellguard-2)
+  shellguard-2:
+    image: andorralee/heralding:v0.1
+    platform: linux/amd64
+    container_name: shellguard-2
+    restart: always
+    ports:
+      - "21:21"     # FTP
+      - "23:23"     # Telnet
+      - "80:80"     # HTTP
+      - "110:110"   # POP3
+      - "143:143"   # IMAP
+      - "443:443"   # HTTPS
+      - "1080:1080" # SOCKS5
+      - "3389:3389" # RDP
+    networks:
+      - andorralee-network
+    volumes:
+      - heralding-logs:/heralding/log
+
+  # Dionaea恶意软件蜜罐 (shellguard-3)
+  shellguard-3:
+    image: andorralee/dionaea:v1
+    platform: linux/amd64
+    container_name: shellguard-3
+    restart: always
+    ports:
+      - "445:445"   # SMB
+      - "135:135"   # MSRPC
+      - "1433:1433" # MSSQL
+      - "3306:3307" # MySQL (避免与数据库冲突)
+      - "5060:5060" # SIP
+    networks:
+      - andorralee-network
+    volumes:
+      - dionaea-logs:/opt/dionaea/var/log
+
+  # MySQL蜜罐 (shellguard-4)
+  shellguard-4:
+    image: andorralee/dbdefende-r2:v1.0
+    platform: linux/amd64
+    container_name: shellguard-4
+    restart: always
+    ports:
+      - "3307:3306"
+    networks:
+      - andorralee-network
+    volumes:
+      - mysql-honeypot-logs:/var/log
+
+networks:
+  andorralee-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  andorralee-logs:
+  cowrie-logs:
+  heralding-logs:
+  dionaea-logs:
+  mysql-honeypot-logs:

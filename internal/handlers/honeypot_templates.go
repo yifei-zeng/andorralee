@@ -43,7 +43,7 @@ var honeypotTemplates = []HoneypotTemplate{
 		ID:          "http-dionaea",
 		Name:        "HTTP蜜罐 (Dionaea)",
 		Protocol:    "http",
-		ImageName:   "dinotools/dionaea:latest",
+		ImageName:   "andorralee/protocollure-r2:v1.0",
 		DefaultPort: 80,
 		Description: "基于Dionaea的HTTP蜜罐，模拟Web服务器",
 		Environment: map[string]string{
@@ -58,7 +58,7 @@ var honeypotTemplates = []HoneypotTemplate{
 		ID:          "ftp-dionaea",
 		Name:        "FTP蜜罐 (Dionaea)",
 		Protocol:    "ftp",
-		ImageName:   "dinotools/dionaea:latest",
+		ImageName:   "andorralee/protocollure-r2:v1.0",
 		DefaultPort: 21,
 		Description: "基于Dionaea的FTP蜜罐，模拟FTP服务器",
 		Environment: map[string]string{
@@ -89,7 +89,7 @@ var honeypotTemplates = []HoneypotTemplate{
 		ID:          "mysql-honeypot",
 		Name:        "MySQL蜜罐",
 		Protocol:    "mysql",
-		ImageName:   "qeeqbox/honeypots:latest",
+		ImageName:   "andorralee/dbdefende-r2:v1.0",
 		DefaultPort: 3306,
 		Description: "数据库蜜罐，模拟MySQL服务器",
 		Environment: map[string]string{

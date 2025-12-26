@@ -1,0 +1,17 @@
+# 单阶段构建（离线友好）：依赖本地构建好的二进制与前端文件
+FROM scratch
+
+WORKDIR /app
+
+# 复制后端二进制与前端静态文件（由 package.sh 预先构建好）
+COPY build/andorralee /app/andorralee
+COPY frontend /app/frontend
+
+# 创建日志目录（通过预置空目录实现）
+COPY deployment/empty_logs_dir /app/logs
+
+ENV TZ=Asia/Shanghai
+
+EXPOSE 8848
+
+ENTRYPOINT ["/app/andorralee"]

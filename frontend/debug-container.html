@@ -8,7 +8,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1f3b73 0%, #1fa2ff 50%, #1fc8db 100%);
             min-height: 100vh;
             padding: 10px;
         }
@@ -171,7 +171,10 @@
                     <span>容器实例: <strong id="containerCount">0</strong></span>
                 </div>
                 <div class="status-item">
-                    <span>MySQL日志: <strong id="mysqlLogCount">0</strong></span>
+                    <span>DBDefender-R2日志: <strong id="mysqlLogCount">0</strong></span>
+                </div>
+                <div class="status-item">
+                    <span>Protocollure-R2日志: <strong id="protocollureLogCount">0</strong></span>
                 </div>
                 <div class="status-item">
                     <span>Cowrie日志: <strong id="cowrieLogCount">0</strong></span>
@@ -182,9 +185,11 @@
 
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('docker')">🐳 Docker</button>
-            <button class="tab-btn" onclick="switchTab('mysql')">🗄️ MySQL蜜罐</button>
+            <button class="tab-btn" onclick="switchTab('mysql')">🛡️ DBDefender-R2</button>
+            <button class="tab-btn" onclick="switchTab('protocollure')">🕷️ Protocollure-R2</button>
             <button class="tab-btn" onclick="switchTab('cowrie')">🐚 Cowrie</button>
             <button class="tab-btn" onclick="switchTab('heralding')">🔐 Heralding</button>
+            <button class="tab-btn" onclick="switchTab('logs')">🗂️ 日志审计</button>
             <button class="tab-btn" onclick="switchTab('analytics')">📊 统计</button>
             <button class="tab-btn" onclick="switchTab('settings')">⚙️ 设置</button>
         </div>
@@ -194,14 +199,14 @@
             <div class="section">
                 <h3>📦 镜像管理</h3>
                 <div class="form-group">
-                    <input type="text" id="pullImageName" placeholder="镜像名称" value="mysql:8.0">
+                    <input type="text" id="pullImageName" placeholder="镜像名称" value="andorralee/dbdefende-r2:v1.0">
                     <button onclick="pullImage()" class="btn-primary">拉取</button>
                     <button onclick="getDockerImages()" class="btn-info">刷新</button>
                 </div>
                 <div class="quick-actions">
-                    <button onclick="pullPresetImage('mysql:8.0')" class="btn-secondary">MySQL</button>
-                    <button onclick="pullPresetImage('ubuntu:20.04')" class="btn-secondary">Ubuntu</button>
-                    <button onclick="pullPresetImage('nginx:latest')" class="btn-secondary">Nginx</button>
+                    <button onclick="pullPresetImage('andorralee/dbdefende-r2:v1.0')" class="btn-secondary">DBDefender-R2</button>
+                    <button onclick="pullPresetImage('andorralee/protocollure-r2:v1.0')" class="btn-secondary">Protocollure-R2</button>
+                    <button onclick="pullPresetImage('andorralee/cowrie:v0.1')" class="btn-secondary">Cowrie</button>
                 </div>
                 <div id="imageList" class="grid"></div>
             </div>
@@ -210,9 +215,10 @@
                 <h3>➕ 创建容器</h3>
                 <div class="form-group">
                     <input type="text" id="containerName" placeholder="容器名称" value="test">
-                    <input type="text" id="imageName" placeholder="镜像名称" value="mysql:8.0">
+                    <input type="text" id="imageName" placeholder="镜像名称" value="andorralee/dbdefende-r2:v1.0">
                     <select id="protocol">
-                        <option value="mysql">MySQL</option>
+                        <option value="mysql">DBDefender-R2 (MySQL)</option>
+                        <option value="dionaea">Protocollure-R2 (Dionaea)</option>
                         <option value="ssh">SSH</option>
                         <option value="http">HTTP</option>
                         <option value="heralding">Heralding (Auto)</option>
@@ -234,10 +240,10 @@
             </div>
         </div>
 
-        <!-- MySQL蜜罐标签页 -->
+        <!-- DBDefender-R2 标签页 -->
         <div id="mysql" class="tab-content">
             <div class="section">
-                <h3>📥 日志拉取</h3>
+                <h3>📥 DBDefender-R2 日志拉取</h3>
                 <div class="form-group">
                     <input type="text" id="mysqlContainerId" placeholder="容器ID">
                     <button onclick="pullMySQLLogs()" class="btn-success">拉取日志</button>
@@ -284,6 +290,41 @@
                     <button onclick="getMySQLStatistics()" class="btn-info">统计</button>
                 </div>
                 <div id="mysqlSearchResult" class="result-panel" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- Protocollure-R2 (Dionaea) 标签页 -->
+        <div id="protocollure" class="tab-content">
+            <div class="section">
+                <h3>🕷️ Protocollure-R2 日志拉取</h3>
+                <div class="form-group">
+                    <input type="text" id="protocollureContainerId" placeholder="容器ID">
+                    <button onclick="pullProtocollureLogs()" class="btn-success">拉取日志</button>
+                </div>
+                <div id="protocollurePullResult" class="result-panel" style="display:none;"></div>
+            </div>
+
+            <div class="section">
+                <h3>🔍 协议与源IP</h3>
+                <div class="form-group">
+                    <input type="text" id="protocollureSourceIP" placeholder="源IP">
+                    <button onclick="getProtocollureLogsBySourceIP()" class="btn-primary">按源IP</button>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="protocollureProtocol" placeholder="协议 (tcp/ftp/http等)">
+                    <button onclick="getProtocollureLogsByProtocol()" class="btn-primary">按协议</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>📆 时间范围 / 全部</h3>
+                <div class="form-group">
+                    <input type="datetime-local" id="protocollureStartTime">
+                    <input type="datetime-local" id="protocollureEndTime">
+                    <button onclick="getProtocollureLogsByTimeRange()" class="btn-info">按时间</button>
+                    <button onclick="getAllProtocollureLogs()" class="btn-secondary">全部日志</button>
+                </div>
+                <div id="protocollureSearchResult" class="result-panel" style="display:none;"></div>
             </div>
         </div>
 
@@ -362,6 +403,25 @@
             </div>
         </div>
 
+        <!-- 统一日志审计标签页 -->
+        <div id="logs" class="tab-content">
+            <div class="section">
+                <h3>🗂️ 统一日志审计</h3>
+                <div class="form-group">
+                    <select id="auditLogType">
+                        <option value="heralding">Heralding</option>
+                        <option value="cowrie">Cowrie</option>
+                        <option value="mysql">DBDefender-R2</option>
+                        <option value="protocollure">Protocollure-R2</option>
+                    </select>
+                    <input type="text" id="auditContainerId" placeholder="容器ID (可选)">
+                    <button onclick="fetchAuditLogs()" class="btn-primary">查询</button>
+                    <button onclick="pullAuditLogs()" class="btn-secondary">拉取最新</button>
+                </div>
+                <div id="auditResult" class="result-panel" style="display:none;"></div>
+            </div>
+        </div>
+
         <!-- 统计分析标签页 -->
         <div id="analytics" class="tab-content">
             <div class="section">
@@ -373,7 +433,7 @@
             <div class="section">
                 <h3>📊 日志导出</h3>
                 <div class="form-group">
-                    <select id="exportType"><option value="all">所有日志</option><option value="mysql">MySQL</option><option value="cowrie">Cowrie</option></select>
+                    <select id="exportType"><option value="all">所有日志</option><option value="mysql">DBDefender-R2</option><option value="protocollure">Protocollure-R2</option><option value="cowrie">Cowrie</option><option value="heralding">Heralding</option></select>
                     <select id="exportFormat"><option value="json">JSON</option><option value="csv">CSV</option></select>
                     <button onclick="exportLogs()" class="btn-success">导出</button>
                 </div>
@@ -404,7 +464,8 @@
                 <div class="form-group">
                     <input type="text" id="cleanContainerId" placeholder="容器ID">
                     <select id="cleanType">
-                        <option value="mysql">清除MySQL日志</option>
+                        <option value="mysql">清除DBDefender-R2日志</option>
+                        <option value="protocollure">清除Protocollure-R2日志</option>
                         <option value="cowrie">清除Cowrie日志</option>
                         <option value="heralding">清除Heralding日志</option>
                     </select>
@@ -523,13 +584,13 @@
         function quickStart(id) { document.getElementById('containerId').value = id; startContainer(); }
         function quickStop(id) { document.getElementById('containerId').value = id; stopContainer(); }
         
-        // MySQL函数
+        // DBDefender-R2 (MySQL) 函数
         async function pullMySQLLogs() {
             const id = document.getElementById('mysqlContainerId').value;
             if (!id) { alert('请输入容器ID'); return; }
             const r = await apiCall('/mysql-honeypot/pull-logs', 'POST', { container_id: id });
             showResult('mysqlPullResult', r, r.error);
-            logOp('拉取MySQL日志: ' + id);
+            logOp('拉取DBDefender-R2日志: ' + id);
         }
         
         async function getMySQLLogsBySourceIP() {
@@ -590,6 +651,49 @@
         async function getMySQLStatistics() {
             const r = await apiCall('/mysql-honeypot/query-statistics');
             showResult('mysqlSearchResult', r.data || r, r.error);
+        }
+
+        // Protocollure-R2 (Dionaea) 函数
+        async function pullProtocollureLogs() {
+            const id = document.getElementById('protocollureContainerId').value;
+            if (!id) { alert('请输入容器ID'); return; }
+            const r = await apiCall('/dionaea/pull-logs', 'POST', { container_id: id });
+            showResult('protocollurePullResult', r, r.error);
+            logOp('拉取Protocollure日志: ' + id);
+        }
+
+        async function getAllProtocollureLogs(countOnly = false) {
+            const r = await apiCall('/dionaea/logs');
+            if (countOnly && r && r.data) {
+                document.getElementById('protocollureLogCount').textContent = r.data.length;
+                return;
+            }
+            showResult('protocollureSearchResult', r.data || r, r.error);
+            if (r && r.data) document.getElementById('protocollureLogCount').textContent = r.data.length;
+        }
+
+        async function getProtocollureLogsBySourceIP() {
+            const ip = document.getElementById('protocollureSourceIP').value;
+            if (!ip) { alert('请输入IP'); return; }
+            const r = await apiCall(`/dionaea/logs/source-ip/${encodeURIComponent(ip)}`);
+            showResult('protocollureSearchResult', r.data || r, r.error);
+        }
+
+        async function getProtocollureLogsByProtocol() {
+            const proto = document.getElementById('protocollureProtocol').value;
+            if (!proto) { alert('请输入协议'); return; }
+            const r = await apiCall(`/dionaea/logs/protocol/${encodeURIComponent(proto)}`);
+            showResult('protocollureSearchResult', r.data || r, r.error);
+        }
+
+        async function getProtocollureLogsByTimeRange() {
+            const s = document.getElementById('protocollureStartTime').value;
+            const e = document.getElementById('protocollureEndTime').value;
+            if (!s || !e) { alert('请选择开始和结束时间'); return; }
+            const startISO = new Date(s).toISOString();
+            const endISO = new Date(e).toISOString();
+            const r = await apiCall(`/dionaea/logs/time-range?start_time=${encodeURIComponent(startISO)}&end_time=${encodeURIComponent(endISO)}`);
+            showResult('protocollureSearchResult', r.data || r, r.error);
         }
         
         // Cowrie函数
@@ -698,8 +802,9 @@
             if (r.data) {
                 const s = r.data;
                 document.getElementById('dashboardStats').innerHTML = `
-                    <div class="stat-card"><div class="label">MySQL日志</div><div class="number">${s.mysql_logs || 0}</div></div>
+                    <div class="stat-card"><div class="label">DBDefender-R2日志</div><div class="number">${s.mysql_logs || 0}</div></div>
                     <div class="stat-card"><div class="label">Cowrie日志</div><div class="number">${s.cowrie_logs || 0}</div></div>
+                    <div class="stat-card"><div class="label">Protocollure日志</div><div class="number">${s.dionaea_logs || 0}</div></div>
                     <div class="stat-card"><div class="label">Heralding日志</div><div class="number">${s.heralding_logs || 0}</div></div>
                     <div class="stat-card"><div class="label">活跃容器</div><div class="number">${s.active_containers || 0}</div></div>
                 `;
@@ -712,6 +817,33 @@
             const r = await apiCall('/logs/export', 'POST', { type: t, format: f });
             showResult('exportResult', r, r.error);
         }
+
+        // 统一日志审计
+        async function fetchAuditLogs() {
+            const type = document.getElementById('auditLogType').value;
+            const cid = document.getElementById('auditContainerId').value.trim();
+            let url = '';
+            if (type === 'heralding') url = cid ? `/heralding/logs/container/${cid}` : '/heralding/logs';
+            else if (type === 'cowrie') url = cid ? `/cowrie/logs/container/${cid}` : '/cowrie/logs';
+            else if (type === 'mysql') url = cid ? `/mysql-honeypot/logs/container/${cid}` : '/mysql-honeypot/logs';
+            else if (type === 'protocollure') url = cid ? `/dionaea/logs/container/${cid}` : '/dionaea/logs';
+            const r = await apiCall(url);
+            showResult('auditResult', r.data || r, r.error);
+        }
+
+        async function pullAuditLogs() {
+            const type = document.getElementById('auditLogType').value;
+            const cid = document.getElementById('auditContainerId').value.trim();
+            if (!cid) { alert('请先输入容器ID'); return; }
+            let url = '';
+            if (type === 'heralding') url = '/heralding/pull-logs';
+            else if (type === 'cowrie') url = '/cowrie/pull-logs';
+            else if (type === 'mysql') url = '/mysql-honeypot/pull-logs';
+            else if (type === 'protocollure') url = '/dionaea/pull-logs';
+            const r = await apiCall(url, 'POST', { container_id: cid });
+            showResult('auditResult', r, r.error);
+            setTimeout(fetchAuditLogs, 2000);
+        }
         
         async function getLogStatistics() {
             const r = await apiCall('/logs/statistics');
@@ -722,7 +854,13 @@
             const id = document.getElementById('cleanContainerId').value;
             const t = document.getElementById('cleanType').value;
             if (!id) { alert('请输入容器ID'); return; }
-            const url = t === 'mysql' ? `/mysql-honeypot/logs/container/${id}` : t === 'cowrie' ? `/cowrie/logs/container/${id}` : `/heralding/logs/container/${id}`;
+            const url = t === 'mysql'
+                ? `/mysql-honeypot/logs/container/${id}`
+                : t === 'protocollure'
+                    ? `/dionaea/logs/container/${id}`
+                    : t === 'cowrie'
+                        ? `/cowrie/logs/container/${id}`
+                        : `/heralding/logs/container/${id}`;
             const r = await apiCall(url, 'DELETE');
             showResult('cleanResult', r, r.error);
         }
@@ -743,6 +881,7 @@
             getHealthStatus();
             getAllContainers();
             getAllMySQLLogs();
+            getAllProtocollureLogs(true);
             getCowrieStatistics();
         }
         

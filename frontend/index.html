@@ -27,6 +27,11 @@
         <header>
             <h2 id="page-title">仪表盘</h2>
             <div style="display:flex; align-items:center; gap:15px">
+                <div style="display:flex; align-items:center; gap:6px">
+                    <label for="node-select" style="font-size:12px; color:#666">节点</label>
+                    <select id="node-select" class="btn btn-sm btn-outline" style="min-width:140px"></select>
+                    <button id="node-refresh-btn" class="btn btn-sm btn-outline" title="刷新节点列表"><i class="fas fa-rotate"></i></button>
+                </div>
                 <span id="system-status" class="badge badge-info">检查中...</span>
                 <span id="current-time" style="font-size:14px; color:#666"></span>
                 <button id="refresh-btn" class="btn btn-sm btn-outline"><i class="fas fa-sync"></i></button>
@@ -40,6 +45,6 @@
 
     <div id="toast-container"></div>
 
-    <script src="/frontend/app.js"></script>
+    <script src="/frontend/app.js?v=20251223"></script>
 </body>
 </html>

@@ -9,9 +9,9 @@ import (
 )
 
 // @title           Andorralee Docker API
-// @version         1.0
+// @version         3.0
 // @description     管理 Docker 镜像和数据库的接口
-// @host            localhost:8080
+// @host            localhost:8848
 // @BasePath        /api/v1
 func main() {
 	// 初始化配置

@@ -1,0 +1,20 @@
+# Minimal image using scratch. Includes static binary and frontend/static assets.
+# This Dockerfile does NOT require network access when building if the files
+# are present in the build context.
+
+FROM scratch
+
+# Put app files under /app
+WORKDIR /app
+
+# Copy prebuilt static Linux binary (must be built as CGO_DISABLED static binary)
+COPY build/andorralee-linux-amd64 /app/andorralee
+
+# Copy frontend and static assets so Gin can serve them
+COPY frontend /app/frontend
+
+# Make binary executable (not necessary in most filesystems but kept for safety)
+
+EXPOSE 8848
+
+CMD ["/app/andorralee"]

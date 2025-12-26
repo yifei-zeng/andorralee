@@ -17,4 +17,15 @@ andorralee.exe
 .DS_Store
 Thumbs.db
 
+# Deployment packages (exclude final packages but keep source files)
+andorralee-deploy-*.tar.gz
+# But keep deployment source files:
+# !deployment/images/*.tar.gz
+# !deployment/andorralee_data.sql.gz
+
+# Local development
+*.log
+server.log
+build_output.txt
+
 

@@ -117,6 +117,7 @@ func InitTables() error {
 		&repositories.HeraldingAuthLog{},
 		&repositories.CowrieLog{},
 		&repositories.MySQLHoneypotLog{},
+		repositories.DionaeaLog{},
 		&repositories.MalwareSignature{},
 		// 先迁移攻击事件，再迁移会话，避免外键顺序问题
 		&repositories.AttackEvent{},

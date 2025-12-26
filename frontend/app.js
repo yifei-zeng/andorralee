@@ -3,22 +3,28 @@
  * Comprehensive Management Interface
  */
 
-const API_BASE = '/api/v1';
+const CENTRAL_API_BASE = '/api/v1';
+let selectedNode = '';
+let nodeList = [];
 
 // --- Utility Functions ---
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => document.querySelectorAll(selector);
 
-async function apiCall(endpoint, method = 'GET', data = null) {
+async function apiCall(endpoint, method = 'GET', data = null, options = {}) {
     try {
-        const options = {
+        const forceCentral = options.forceCentral || false;
+        const targetNode = options.nodeId || selectedNode;
+        const base = (!forceCentral && targetNode) ? `${CENTRAL_API_BASE}/proxy/${targetNode}` : CENTRAL_API_BASE;
+        const url = base + endpoint;
+        const fetchOptions = {
             method: method,
             headers: { 'Content-Type': 'application/json' },
         };
         if (data && method !== 'GET') {
-            options.body = JSON.stringify(data);
+            fetchOptions.body = JSON.stringify(data);
         }
-        const response = await fetch(API_BASE + endpoint, options);
+        const response = await fetch(url, fetchOptions);
         const result = await response.json();
         
         if (!response.ok) {
@@ -30,6 +36,27 @@ async function apiCall(endpoint, method = 'GET', data = null) {
         console.error('API Error:', error);
         return null;
     }
+}
+
+async function loadNodes() {
+    const select = $('#node-select');
+    if (!select) return;
+    select.innerHTML = '<option value="">加载中...</option>';
+    const res = await apiCall('/nodes', 'GET', null, { forceCentral: true });
+    nodeList = Array.isArray(res) ? res : [];
+    if (!nodeList.length) {
+        select.innerHTML = '<option value="">无可用节点</option>';
+        selectedNode = '';
+        return;
+    }
+    select.innerHTML = '<option value="">默认 (Central)</option>' + nodeList.map(n => `<option value="${n.id}">${n.name || n.id}</option>`).join('');
+    if (selectedNode) {
+        select.value = selectedNode;
+    }
+    select.onchange = () => {
+        selectedNode = select.value;
+        showToast(selectedNode ? `已切换到节点 ${selectedNode}` : '使用 Central', 'info');
+    };
 }
 
 function showToast(message, type = 'info') {
@@ -493,6 +520,7 @@ async function renderLogs(container) {
                     <option value="heralding">Heralding (凭证捕获)</option>
                     <option value="cowrie">Cowrie (SSH/Telnet)</option>
                     <option value="mysql">MySQL Honeypot</option>
+                    <option value="dionaea">Protocollure-R2 (Dionaea)</option>
                 </select>
                 <select id="log-cid-select" style="min-width:260px">
                     <option value="">选择运行容器 (自动填充Docker ID)</option>
@@ -552,6 +580,7 @@ window.fetchLogs = async () => {
     if (type === 'heralding') endpoint = cid ? `/heralding/logs/container/${cid}` : '/heralding/logs';
     else if (type === 'cowrie') endpoint = cid ? `/cowrie/logs/container/${cid}` : '/cowrie/logs';
     else if (type === 'mysql') endpoint = cid ? `/mysql-honeypot/logs/container/${cid}` : '/mysql-honeypot/logs';
+    else if (type === 'dionaea') endpoint = cid ? `/dionaea/logs/container/${cid}` : '/dionaea/logs';
 
     const res = await apiCall(endpoint);
     const display = $('#log-display');
@@ -583,7 +612,7 @@ window.fetchLogs = async () => {
             const time = new Date(log.event_time || log.timestamp || log.created_at).toLocaleString();
             const ip = log.source_ip || '-';
             const proto = log.protocol || type;
-            
+			
             let eventContent = '';
             let details = '';
 
@@ -605,6 +634,16 @@ window.fetchLogs = async () => {
                 // MySQL 特定展示
                 eventContent = log.query ? `<code>${escapeHtml(log.query)}</code>` : 'Login Attempt';
                 details = `User: ${log.username}`;
+            } else if (type === 'dionaea') {
+                // Dionaea / Protocollure 展示：payload/url/connection_type
+                if (log.payload) {
+                    eventContent = `<span class="badge badge-info">PAYLOAD</span> <code>${escapeHtml(String(log.payload).slice(0,200))}${log.payload && String(log.payload).length>200 ? '…' : ''}</code>`;
+                } else if (log.url) {
+                    eventContent = `<span class="badge badge-info">URL</span> ${escapeHtml(log.url)}`;
+                } else {
+                    eventContent = `<span class="badge badge-info">EVENT</span> ${escapeHtml(log.raw_log || 'Connection')}`;
+                }
+                details = `Conn: ${log.connection_type || '-'} | Dst: ${log.destination_ip || '-'}:${log.destination_port || ''}`;
             }
 
             tableHtml += `
@@ -646,7 +685,8 @@ window.pullLogs = async () => {
     const endpoint = {
         'heralding': '/heralding/pull-logs',
         'cowrie': '/cowrie/pull-logs',
-        'mysql': '/mysql-honeypot/pull-logs'
+        'mysql': '/mysql-honeypot/pull-logs',
+        'dionaea': '/dionaea/pull-logs'
     }[type];
     
     await apiCall(endpoint, 'POST', {container_id: cid});
@@ -922,13 +962,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if(active) navigateTo(active.dataset.route);
     });
 
+    const nodeRefresh = $('#node-refresh-btn');
+    if (nodeRefresh) {
+        nodeRefresh.addEventListener('click', loadNodes);
+    }
+
+    loadNodes();
+
     // Start
     navigateTo('dashboard');
     setInterval(updateTime, 1000);
     updateTime();
     
     // Check system status
-    apiCall('/health').then(res => {
+    apiCall('/health', 'GET', null, { forceCentral: true }).then(res => {
         const el = $('#system-status');
         if(res && res.status === 'ok') {
             el.className = 'badge badge-success';
